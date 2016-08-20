@@ -268,14 +268,12 @@ out:
 			}
 		case msg := <-s.routingMgr.ChOut:
 			msg1 := msg.(lnwire.RoutingMessage)
-			peerLog.Infof("Routing message receiver: %v. Sender: %v", msg1.GetReceiverID(), msg1.GetSenderID())
 			if msg1.GetReceiverID() == nil{
 				peerLog.Critical("msg1.GetReceiverID() == nil")
 			}
 			if msg1.GetSenderID() == nil{
 				peerLog.Critical("msg1.GetSenderID() == nil")
 			}
-			peerLog.Infof("Routing message after .ToByte32() receiver: %v. Sender: %v", msg1.GetReceiverID().ToByte32(), msg1.GetSenderID().ToByte32())
 			msg2, ok := msg.(lnwire.Message)
 			if !ok {
 				peerLog.Errorf("**** Error: can't convert to lnwire.Message")
