@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -14,8 +16,10 @@ import (
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 	"github.com/BitfuryLightning/tools/rt"
-	"github.com/BitfuryLightning/tools/rt/graph/prefix_tree"
+	"github.com/BitfuryLightning/tools/prefix_tree"
 	"github.com/BitfuryLightning/tools/rt/graph"
+
+	"github.com/BitfuryLightning/tools/rt/visualizer"
 )
 
 // TODO(roasbeef): cli logic for supporting both positional and unix style
@@ -538,6 +542,18 @@ var ShowRoutingTableCommand = cli.Command{
 			Name:  "human",
 			Usage: "Simplify output to human readable form. Output lightning_id partially. Only work with --table option.",
 		},
+		cli.StringFlag{
+			Name:  "type",
+			Usage: "Type of image file. Use one of: http://www.graphviz.org/content/output-formats. Usage of this option supresses textual output",
+		},
+		cli.StringFlag{
+			Name:  "viz",
+			Usage: "Specifies where to save the generated file. If don't specified use os.TempDir Usage of this option supresses textual output",
+		},
+		cli.BoolFlag{
+			Name:  "open",
+			Usage: "Open generated file automatically. Uses command line \"open\" command",
+		},
 	},
 
 	Action: showRoutingTable,
@@ -552,6 +568,7 @@ func showRoutingTable(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	// TODO(mkl): maybe it is better to print output directly omitting
 	// conversion to RoutingTable. This part is not performance critical so
 	// I think it is ok because it enables code reuse
@@ -564,16 +581,92 @@ func showRoutingTable(ctx *cli.Context) error {
 			&rt.ChannelInfo{channel.Capacity, channel.Weight},
 		)
 	}
+
+	req2 := &lnrpc.GetInfoRequest{}
+	resp2, err := client.GetInfo(ctxb, req2)
 	if err != nil {
-		fmt.Println("Can't unmarshall routing table")
 		return err
 	}
-	if ctx.Bool("table") {
+	self, _ := hex.DecodeString(resp2.LightningId)
+
+	typ := ctx.String("type")
+	viz := ctx.String("viz")
+	if typ != "" || viz != "" {
+		TempFile, err  := ioutil.TempFile("", "") 
+		if err != nil {
+			return err
+		}
+		var ImageFile *os.File
+		// if the type is not specified explicitly parse the filename
+		if typ == "" {
+			typ = filepath.Ext(viz)[1:]
+		} 
+		// if the filename is not specified explicitly use tempfile
+		if viz == "" {
+			ImageFile, err = TempFileWithSuffix("", "rt_", "."+typ)
+			if err != nil {
+				return err
+			}
+		} else {
+			ImageFile, err = os.Create(viz)
+			if err != nil {
+				return err
+			}
+		}
+		if _, ok := visualizer.SupportedFormatsAsMap()[typ]; !ok {
+			fmt.Printf("Format: '%v' not recognized. Use one of: %v\n", typ, visualizer.SupportedFormats())
+			return nil
+		}
+		// generate description graph by dot language
+		writeToTempFile(r, TempFile, self)
+		writeToImageFile(TempFile, ImageFile)
+		if ctx.Bool("open") {
+			if err := visualizer.Open(ImageFile); err != nil {
+				return err
+			}
+		}
+	} else if ctx.Bool("table") {
 		printRTAsTable(r, ctx.Bool("human"))
 	} else {
 		printRTAsJSON(r)
 	}
 	return nil
+}
+
+func writeToTempFile(r *rt.RoutingTable, file *os.File, self []byte) {
+	slc := []graph.ID{graph.NewID(string(self))}
+	viz := visualizer.New(r.G, slc, nil, nil)
+	viz.ApplyToNode = func(s string) string { return hex.EncodeToString([]byte(s)) }
+	viz.ApplyToEdge = func(info interface{}) string { 
+		if info, ok := info.(*rt.ChannelInfo); ok {
+			return fmt.Sprintf(`"%v"`, info.Capacity())
+		}
+		return "nil"
+	}
+	// need to call method if plan to use shortcut, autocomplete, etc
+	viz.BuildPrefixTree()
+	viz.EnableShortcut(true)
+	dot := viz.Draw()
+	file.Write([]byte(dot))
+	file.Sync()
+}
+
+func writeToImageFile(TempFile, ImageFile *os.File) {
+	visualizer.Run("neato", TempFile, ImageFile)
+	TempFile.Close()
+	os.Remove(TempFile.Name())
+	ImageFile.Close()
+}
+
+// get around a bug in the standard library, add suffix param
+func TempFileWithSuffix(dir, prefix, suffix string) (f *os.File, err error) {
+	f, err = ioutil.TempFile(dir, prefix)
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(f.Name())
+	f, err = os.Create(f.Name()+suffix)
+	return
 }
 
 // Prints routing table in human readable table format
