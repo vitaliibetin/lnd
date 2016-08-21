@@ -1033,7 +1033,8 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 			for _, htlc := range htlcsToForward {
 				// Send this fully activated HTLC to the htlc switch to
 				// continue the chained clear/settle.
-				state.switchChan <- p.logEntryToHtlcPkt(htlc)
+				state.switchChan <- p.logEntryToHtlcPkt(htlc, state.chanPoint)
+
 			}
 
 		}()
@@ -1143,7 +1144,7 @@ func (p *peer) updateCommitTx(state *commitmentState) (bool, error) {
 // log entry the corresponding htlcPacket with src/dest set along with the
 // proper wire message. This helepr method is provided in order to aide an
 // htlcManager in forwarding packets to the htlcSwitch.
-func (p *peer) logEntryToHtlcPkt(pd *lnwallet.PaymentDescriptor) *htlcPacket {
+func (p *peer) logEntryToHtlcPkt(pd *lnwallet.PaymentDescriptor, outPoint *wire.OutPoint) *htlcPacket {
 	pkt := &htlcPacket{}
 
 	// TODO(roasbeef): alter after switch to log entry interface
@@ -1154,11 +1155,13 @@ func (p *peer) logEntryToHtlcPkt(pd *lnwallet.PaymentDescriptor) *htlcPacket {
 		msg = &lnwire.HTLCAddRequest{
 			Amount:           lnwire.CreditsAmount(pd.Amount),
 			RedemptionHashes: [][32]byte{pd.RHash},
+			ChannelPoint: outPoint,
 		}
 	case lnwallet.Settle:
 		// TODO(roasbeef): thread through preimage
 		msg = &lnwire.HTLCSettleRequest{
 			HTLCKey: lnwire.HTLCKey(pd.ParentIndex),
+			ChannelPoint: outPoint,
 		}
 	}
 

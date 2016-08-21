@@ -15,6 +15,7 @@ import (
 	"github.com/roasbeef/btcwallet/chain"
 	"github.com/roasbeef/btcd/chaincfg"
 	"strconv"
+	"math"
 )
 
 type LndNodeDesc struct {
@@ -500,7 +501,7 @@ func (sim *SimNet)OpenChannelFromFirstToSecond(){
 		"lncli",
 		1*time.Second, "",
 		"--rpcserver", sim.lndNodesDesc[0].RpcAddress(),
-		"openchannel", "--peer_id=1", "--local_amt=100000000", "--remote_amt=0", "--num_confs=1",
+		"openchannel", "--peer_id=1", "--local_amt=300000000", "--remote_amt=0", "--num_confs=1",
 	)
 	if err != nil {
 		log.Fatalf("Can't open channel %v. Output: %v %v. Node 2 output: %v %v", err, stdOut, stdErr, sim.lndCmds[1].Stdout, sim.lndCmds[1].Stderr)
@@ -578,7 +579,6 @@ func (sim *SimNet)GetLightningBalance(n int) int{
 				} `json:"channels"`
 			  } `json:"peers"`
 	}
-	log.Println(stdOut)
 	err = json.Unmarshal([]byte(stdOut), &data)
 	if err != nil {
 		log.Fatalln("Error parsing data", err)
@@ -690,27 +690,38 @@ func main(){
 		" So block should have 2 transactions. Got %v", len(bestBlock.Transactions()))
 	}
 	time.Sleep(2*time.Second)
-	sim.SendMoneyBetweenNodes(0, 1, 1000)
+	sim.SendMoneyBetweenNodes(0, 1, 200000000)
+	time.Sleep(1*time.Second)
 
 	// I guess there should be direct call for Lightning balances
 	// For now version using listpeers
-	expectedBalances := []int{100000000-1000, 1000, 0}
+	balanceError := false
+	expectedBalances := []int{300000000-200000000, 200000000, 0}
 	for i:=0; i< 3; i++{
 		balance := sim.GetLightningBalance(i)
 		if expectedBalances[i] != balance{
 			log.Printf("Lightning balance of node %v is %v, want %v", i, balance, expectedBalances[i])
+			balanceError = true
 		}
 	}
+	if balanceError{
+		log.Fatalf("Incorrect Lightning balance for some nodes after direct sending")
+	}
 
-	sim.SendMoneyBetweenNodes(1, 0, 100)
+	sim.SendMoneyBetweenNodes(1, 0, 100000000)
 	// I guess there should be direct call for Lightning balances
 	// For now version using listpeers
-	expectedBalances = []int{100000000-1000+100, 1000-100, 0}
+	expectedBalances = []int{300000000-200000000+100000000, 200000000-100000000, 0}
+	balanceError = false
 	for i:=0; i< 3; i++{
 		balance := sim.GetLightningBalance(i)
 		if expectedBalances[i] != balance{
 			log.Printf("Lightning balance of node %v is %v, want %v", i, balance, expectedBalances[i])
+			balanceError = true
 		}
+	}
+	if balanceError{
+		log.Fatalf("Incorrect Lightning balance for some nodes after reverse sending")
 	}
 
 	sim.CloseChannelFromFirstToSecond()
@@ -725,17 +736,32 @@ func main(){
 	if err != nil{
 		log.Fatalf("Can't get best block: %v", err)
 	}
-	fmt.Println("****************************")
-	fmt.Println(sim.lndCmds[0].Stdout, sim.lndCmds[0].Stderr)
-	fmt.Println("****************************")
-	fmt.Println(sim.lndCmds[1].Stdout, sim.lndCmds[1].Stderr)
-	fmt.Println("*****************************")
-	fmt.Println("transactions:", bestBlock.Transactions())
+//	fmt.Println("****************************")
+//	fmt.Println(sim.lndCmds[0].Stdout, sim.lndCmds[0].Stderr)
+//	fmt.Println("****************************")
+//	fmt.Println(sim.lndCmds[1].Stdout, sim.lndCmds[1].Stderr)
+//	fmt.Println("*****************************")
+//	fmt.Println("transactions:", bestBlock.Transactions())
 	if len(bestBlock.Transactions()) != 2{
 		log.Fatalf("After closing channel blockchain should have funding transaction."+
 		" So block should have 2 transactions. Got %v", len(bestBlock.Transactions()))
 	}
+	sim.GenerateBlocks(10)
+	time.Sleep(1 * time.Second)
+	expectedBTCBalances := []float64{9, 1, 0}
+	// Maximum value of bitcoin commission
+	eps := 1e-3
 
+	for i:=0; i< 3; i++{
+		balance := sim.GetBalanceForNode(i)
+		if math.Abs(expectedBTCBalances[i] - balance) > eps {
+			log.Printf("Onchain balance of node %v is %v which is different from expected balance %v with maximal commision %v", i, balance, expectedBTCBalances[i], eps)
+			balanceError = true
+		}
+	}
+	if balanceError{
+		log.Fatalf("Incorrect Bitcoin balance on chain for some nodes after closing chanel")
+	}
 
 	sim.StopWallet()
 	sim.StopBTCD()
