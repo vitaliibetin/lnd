@@ -17,6 +17,7 @@ import (
 	"github.com/roasbeef/btcd/btcec"
 	"github.com/roasbeef/btcd/txscript"
 	"github.com/roasbeef/btcd/wire"
+	"github.com/BitfuryLightning/tools/rt/graph"
 )
 
 var (
@@ -385,6 +386,10 @@ out:
 			*lnwire.RoutingTableTransferMessage:
 
 			// TODO(mkl): determine sender and receiver of message
+			// Convert to base routing message and set sender and receiver
+			msg2 := msg.(lnwire.RoutingMessage)
+			msg2.SetSenderID(graph.NewID(([32]byte)(p.lightningID)))
+			msg2.SetReceiverID(graph.NewID(([32]byte)(p.server.lightningID)))
 			p.server.routingMgr.ChIn <- msg
 		}
 
@@ -463,7 +468,7 @@ out:
 			}
 
 			if err := p.writeMessage(outMsg.msg); err != nil {
-				peerLog.Errorf("unable to write message: %v", err)
+				peerLog.Errorf("unable to write message: %v. Message: %v", err, outMsg.msg)
 				p.Disconnect()
 				break out
 			}

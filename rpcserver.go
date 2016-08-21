@@ -16,6 +16,7 @@ import (
 	"github.com/roasbeef/btcutil"
 	"github.com/roasbeef/btcwallet/waddrmgr"
 	"golang.org/x/net/context"
+	"bytes"
 )
 
 var (
@@ -465,13 +466,14 @@ func (r *rpcServer) SendPayment(paymentStream lnrpc.Lightning_SendPaymentServer)
 				// to complete the next payment.
 				// TODO(roasbeef): this should go through the L3 router once
 				// multi-hop is in place.
+				resp := &lnrpc.SendResponse{}
 				if err := r.server.htlcSwitch.SendHTLC(htlcPkt); err != nil {
 					errChan <- err
-					return
+					resp.Error = err.Error()
 				}
 
 				// TODO(roasbeef): proper responses
-				resp := &lnrpc.SendResponse{}
+
 				if err := paymentStream.Send(resp); err != nil {
 					errChan <- err
 					return
@@ -487,7 +489,9 @@ func (r *rpcServer) ShowRoutingTable(ctx context.Context,
 	in *lnrpc.ShowRoutingTableRequest) (*lnrpc.ShowRoutingTableResponse, error) {
 	rpcsLog.Debugf("[ShowRoutingTable]")
 	rtCopy := r.server.routingMgr.GetRTCopy()
+	buff := new(bytes.Buffer)
+	err := rtCopy.Marshall(buff)
 	return &lnrpc.ShowRoutingTableResponse{
-		Rt: rtCopy.String(),
-	}, nil
+		Rt: buff.String(),
+	}, err
 }

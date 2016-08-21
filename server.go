@@ -268,7 +268,19 @@ out:
 			}
 		case msg := <-s.routingMgr.ChOut:
 			msg1 := msg.(lnwire.RoutingMessage)
-			receiverID := msg1.GetReceiverID().ToByte32()
+			if msg1.GetReceiverID() == nil{
+				peerLog.Critical("msg1.GetReceiverID() == nil")
+			}
+			if msg1.GetSenderID() == nil{
+				peerLog.Critical("msg1.GetSenderID() == nil")
+			}
+			msg2, ok := msg.(lnwire.Message)
+			if !ok {
+				peerLog.Errorf("**** Error: can't convert to lnwire.Message")
+			} else {
+				peerLog.Infof("Sending routing lnwire.Message %v", msg2)
+			}
+		 receiverID := msg1.GetReceiverID().ToByte32()
 			var targetPeer *peer
 			for _, peer := range s.peers { // TODO: threadsafe api
 				// We found the the target
@@ -403,8 +415,7 @@ func (s *server) handleOpenChanReq(req *openChanReq) {
 		fundingID, err := s.fundingMgr.initFundingWorkflow(targetPeer, req)
 		if err == nil {
 			capacity := float64(req.localFundingAmt + req.remoteFundingAmt)
-			s.routingMgr.AddChannel(
-				graph.NewID(s.lightningID),
+			s.routingMgr.OpenChannel(
 				graph.NewID([32]byte(targetPeer.lightningID)),
 				graph.NewEdgeID(fundingID.String()),
 				&rt.ChannelInfo{
