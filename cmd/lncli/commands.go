@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/context"
 	"github.com/BitfuryLightning/tools/rt"
 	"github.com/BitfuryLightning/tools/rt/graph/prefix_tree"
+	"errors"
 )
 
 // TODO(roasbeef): cli logic for supporting both positional and unix style
@@ -484,25 +485,22 @@ func sendPaymentCommand(ctx *cli.Context) error {
 		Amt:      int64(ctx.Int("amt")),
 		FastSend: ctx.Bool("fast"),
 	}
-
 	paymentStream, err := client.SendPayment(context.Background())
 	if err != nil {
 		return err
 	}
-
 	if err := paymentStream.Send(req); err != nil {
 		return err
 	}
-
 	resp, err := paymentStream.Recv()
 	if err != nil {
 		return err
 	}
-
+	if resp.Error != "" {
+		return errors.New(resp.Error)
+	}
 	paymentStream.CloseSend()
-
 	printRespJson(resp)
-
 	return nil
 }
 
