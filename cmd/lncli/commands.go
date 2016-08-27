@@ -16,7 +16,8 @@ import (
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 	"github.com/BitfuryLightning/tools/rt"
-	"github.com/BitfuryLightning/tools/rt/graph/prefix_tree"
+	"github.com/BitfuryLightning/tools/rt/graph"
+	"github.com/BitfuryLightning/tools/prefix_tree"
 	"github.com/BitfuryLightning/tools/rt/visualizer"
 	"errors"
 )
@@ -541,6 +542,14 @@ func showRoutingTable(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	req2 := &lnrpc.GetInfoRequest{}
+	resp2, err := client.GetInfo(ctxb, req2)
+	if err != nil {
+		return err
+	}
+	self, _ := hex.DecodeString(resp2.LightningId)
+
 	buff := bytes.NewBuffer([]byte(resp.Rt))
 	r, err := rt.UnmarshallRoutingTable(buff)
 	if err != nil {
@@ -577,7 +586,7 @@ func showRoutingTable(ctx *cli.Context) error {
 			return nil
 		}
 		// generate description graph by dot language
-		writeToTempFile(r, TempFile)
+		writeToTempFile(r, TempFile, self)
 		writeToImageFile(TempFile, ImageFile)
 		if ctx.Bool("open") {
 			if err := visualizer.Open(ImageFile); err != nil {
@@ -595,8 +604,9 @@ func showRoutingTable(ctx *cli.Context) error {
 	return nil
 }
 
-func writeToTempFile(r *rt.RoutingTable, file *os.File) {
-	viz := visualizer.New(r.G, nil, nil, nil)
+func writeToTempFile(r *rt.RoutingTable, file *os.File, self []byte) {
+	slc := []graph.ID{graph.NewID(string(self))}
+	viz := visualizer.New(r.G, slc, nil, nil)
 	viz.ApplyToNode = func(s string) string { return hex.EncodeToString([]byte(s)) }
 	viz.ApplyToEdge = func(info interface{}) string { 
 		if info, ok := info.(*rt.ChannelInfo); ok {
