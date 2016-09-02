@@ -532,46 +532,55 @@ func sendPaymentCommand(ctx *cli.Context) error {
 var ShowRoutingTableCommand = cli.Command{
 	Name:        "showroutingtable",
 	Description: "shows routing table for a node",
-	Usage:       "showroutingtable [--table]",
-	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "table",
-			Usage: "Print channels in routing table in table format.",
+	Usage:       "showroutingtable text|image",
+	Subcommands: []cli.Command{
+		{
+			Name: "text",
+			Usage: "[--table|--human]",
+			Description: "Show routing table in textual format. By default in JSON",
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "table",
+					Usage: "Print channels in routing table in table format.",
+				},
+				cli.BoolFlag{
+					Name:  "human",
+					Usage: "Print channels in routing table in table format. Output lightning_id partially - only a few first symbols which uniquelly identifies it.",
+				},
+			},
+			Action: showRoutingTableAsText,
 		},
-		cli.BoolFlag{
-			Name:  "human",
-			Usage: "Print channels in routing table in table format. Output lightning_id partially - only a few first symbols which uniquelly identifies it. Only work with --table option.",
-		},
-		cli.StringFlag{
-			Name:  "type",
-			Usage: "Type of image file. Use one of: http://www.graphviz.org/content/output-formats. Usage of this option supresses textual output",
-		},
-		cli.StringFlag{
-			Name:  "viz",
-			Usage: "Specifies where to save the generated file. If don't specified use os.TempDir Usage of this option supresses textual output",
-		},
-		cli.BoolFlag{
-			Name:  "open",
-			Usage: "Open generated file automatically. Uses command line \"open\" command",
+		{
+			Name: "image",
+			Usage: "[--type <IMAGE_TYPE>] [--dest OUTPUT_FILE] [--open]",
+			Description: "Create image with graphical representation of routing table",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "type",
+					Usage: "Type of image file. Use one of: http://www.graphviz.org/content/output-formats. Usage of this option supresses textual output",
+				},
+				cli.StringFlag{
+					Name:  "dest",
+					Usage: "Specifies where to save the generated file. If don't specified use os.TempDir Usage of this option supresses textual output",
+				},
+				cli.BoolFlag{
+					Name:  "open",
+					Usage: "Open generated file automatically. Uses command line \"open\" command",
+				},
+			},
+			Action: showRoutingTableAsImage,
 		},
 	},
-
-	Action: showRoutingTable,
+//	Action: showRoutingTable,
 }
 
-func showRoutingTable(ctx *cli.Context) error {
-	ctxb := context.Background()
-	client := getClient(ctx)
-
+func getRoutingTable(ctxb context.Context, client lnrpc.LightningClient) (*rt.RoutingTable, error) {
 	req := &lnrpc.ShowRoutingTableRequest{}
 	resp, err := client.ShowRoutingTable(ctxb, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// TODO(mkl): maybe it is better to print output directly omitting
-	// conversion to RoutingTable. This part is not performance critical so
-	// I think it is ok because it enables code reuse
 	r := rt.NewRoutingTable()
 	for _, channel := range resp.Channels {
 		r.AddChannel(
@@ -580,6 +589,40 @@ func showRoutingTable(ctx *cli.Context) error {
 			graph.NewEdgeID(channel.Outpoint),
 			&rt.ChannelInfo{channel.Capacity, channel.Weight},
 		)
+	}
+	return r, nil
+}
+
+func showRoutingTableAsText(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client := getClient(ctx)
+
+	r, err := getRoutingTable(ctxb, client)
+	if err != nil{
+		return err
+	}
+
+	if ctx.Bool("table") && ctx.Bool("human"){
+		return fmt.Errorf("--table and --human can be used at the same time")
+	}
+
+	if ctx.Bool("table") {
+		printRTAsTable(r, false)
+	} else if ctx.Bool("human") {
+		printRTAsTable(r, true)
+	} else {
+		printRTAsJSON(r)
+	}
+	return nil
+}
+
+func showRoutingTableAsImage(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client := getClient(ctx)
+
+	r, err := getRoutingTable(ctxb, client)
+	if err != nil{
+		return err
 	}
 
 	reqGetInfo := &lnrpc.GetInfoRequest{}
@@ -592,52 +635,50 @@ func showRoutingTable(ctx *cli.Context) error {
 		return err
 	}
 
-	typ := ctx.String("type")
-	viz := ctx.String("viz")
-	if typ != "" || viz != "" {
-		tempFile, err  := ioutil.TempFile("", "")
+	imgType := ctx.String("type")
+	imgDest := ctx.String("dest")
+	if imgType == "" && imgDest == "" {
+		return fmt.Errorf("One or both of --type or --dest should be specified")
+	}
+
+	tempFile, err  := ioutil.TempFile("", "")
+	if err != nil {
+		return err
+	}
+	var imageFile *os.File
+	// if the type is not specified explicitly parse the filename
+	if imgType == "" {
+		imgType = filepath.Ext(imgDest)[1:]
+	}
+	// if the filename is not specified explicitly use tempfile
+	if imgDest == "" {
+		imageFile, err = TempFileWithSuffix("", "rt_", "."+ imgType)
 		if err != nil {
 			return err
 		}
-		var imageFile *os.File
-		// if the type is not specified explicitly parse the filename
-		if typ == "" {
-			typ = filepath.Ext(viz)[1:]
-		} 
-		// if the filename is not specified explicitly use tempfile
-		if viz == "" {
-			imageFile, err = TempFileWithSuffix("", "rt_", "."+typ)
-			if err != nil {
-				return err
-			}
-		} else {
-			imageFile, err = os.Create(viz)
-			if err != nil {
-				return err
-			}
-		}
-		if _, ok := visualizer.SupportedFormatsAsMap()[typ]; !ok {
-			fmt.Printf("Format: '%v' not recognized. Use one of: %v\n", typ, visualizer.SupportedFormats())
-			return nil
-		}
-		// generate description graph by dot language
-		err = writeToTempFile(r, tempFile, selfLightningId)
-		if err != nil {
-			return err
-		}
-		err = writeToImageFile(tempFile, imageFile)
-		if err != nil {
-			return err
-		}
-		if ctx.Bool("open") {
-			if err := visualizer.Open(imageFile); err != nil {
-				return err
-			}
-		}
-	} else if ctx.Bool("table") {
-		printRTAsTable(r, ctx.Bool("human"))
 	} else {
-		printRTAsJSON(r)
+		imageFile, err = os.Create(imgDest)
+		if err != nil {
+			return err
+		}
+	}
+	if _, ok := visualizer.SupportedFormatsAsMap()[imgType]; !ok {
+		fmt.Printf("Format: '%v' not recognized. Use one of: %v\n", imgType, visualizer.SupportedFormats())
+		return nil
+	}
+	// generate description graph by dot language
+	err = writeToTempFile(r, tempFile, selfLightningId)
+	if err != nil {
+		return err
+	}
+	err = writeToImageFile(tempFile, imageFile)
+	if err != nil {
+		return err
+	}
+	if ctx.Bool("open") {
+		if err := visualizer.Open(imageFile); err != nil {
+			return err
+		}
 	}
 	return nil
 }
