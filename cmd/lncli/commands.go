@@ -536,11 +536,11 @@ var ShowRoutingTableCommand = cli.Command{
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "table",
-			Usage: "Show the routing table in table format. Print only a few first symbols of id",
+			Usage: "Print channels in routing table in table format.",
 		},
 		cli.BoolFlag{
 			Name:  "human",
-			Usage: "Simplify output to human readable form. Output lightning_id partially. Only work with --table option.",
+			Usage: "Print channels in routing table in table format. Output lightning_id partially - only a few first symbols which uniquelly identifies it. Only work with --table option.",
 		},
 		cli.StringFlag{
 			Name:  "type",
@@ -577,38 +577,41 @@ func showRoutingTable(ctx *cli.Context) error {
 		r.AddChannel(
 			graph.NewID(channel.Id1),
 			graph.NewID(channel.Id2),
-			graph.NewEdgeID(channel.EdgeID),
+			graph.NewEdgeID(channel.Outpoint),
 			&rt.ChannelInfo{channel.Capacity, channel.Weight},
 		)
 	}
 
-	req2 := &lnrpc.GetInfoRequest{}
-	resp2, err := client.GetInfo(ctxb, req2)
+	reqGetInfo := &lnrpc.GetInfoRequest{}
+	respGetInfo, err := client.GetInfo(ctxb, reqGetInfo)
 	if err != nil {
 		return err
 	}
-	self, _ := hex.DecodeString(resp2.LightningId)
+	selfLightningId, err := hex.DecodeString(respGetInfo.LightningId)
+	if err != nil {
+		return err
+	}
 
 	typ := ctx.String("type")
 	viz := ctx.String("viz")
 	if typ != "" || viz != "" {
-		TempFile, err  := ioutil.TempFile("", "") 
+		tempFile, err  := ioutil.TempFile("", "")
 		if err != nil {
 			return err
 		}
-		var ImageFile *os.File
+		var imageFile *os.File
 		// if the type is not specified explicitly parse the filename
 		if typ == "" {
 			typ = filepath.Ext(viz)[1:]
 		} 
 		// if the filename is not specified explicitly use tempfile
 		if viz == "" {
-			ImageFile, err = TempFileWithSuffix("", "rt_", "."+typ)
+			imageFile, err = TempFileWithSuffix("", "rt_", "."+typ)
 			if err != nil {
 				return err
 			}
 		} else {
-			ImageFile, err = os.Create(viz)
+			imageFile, err = os.Create(viz)
 			if err != nil {
 				return err
 			}
@@ -618,10 +621,16 @@ func showRoutingTable(ctx *cli.Context) error {
 			return nil
 		}
 		// generate description graph by dot language
-		writeToTempFile(r, TempFile, self)
-		writeToImageFile(TempFile, ImageFile)
+		err = writeToTempFile(r, tempFile, selfLightningId)
+		if err != nil {
+			return err
+		}
+		err = writeToImageFile(tempFile, imageFile)
+		if err != nil {
+			return err
+		}
 		if ctx.Bool("open") {
-			if err := visualizer.Open(ImageFile); err != nil {
+			if err := visualizer.Open(imageFile); err != nil {
 				return err
 			}
 		}
@@ -633,7 +642,7 @@ func showRoutingTable(ctx *cli.Context) error {
 	return nil
 }
 
-func writeToTempFile(r *rt.RoutingTable, file *os.File, self []byte) {
+func writeToTempFile(r *rt.RoutingTable, file *os.File, self []byte) error {
 	slc := []graph.ID{graph.NewID(string(self))}
 	viz := visualizer.New(r.G, slc, nil, nil)
 	viz.ApplyToNode = func(s string) string { return hex.EncodeToString([]byte(s)) }
@@ -647,26 +656,46 @@ func writeToTempFile(r *rt.RoutingTable, file *os.File, self []byte) {
 	viz.BuildPrefixTree()
 	viz.EnableShortcut(true)
 	dot := viz.Draw()
-	file.Write([]byte(dot))
-	file.Sync()
+	_, err := file.Write([]byte(dot))
+	if err != nil {
+		return err
+	}
+	err = file.Sync()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func writeToImageFile(TempFile, ImageFile *os.File) {
-	visualizer.Run("neato", TempFile, ImageFile)
-	TempFile.Close()
-	os.Remove(TempFile.Name())
-	ImageFile.Close()
+func writeToImageFile(TempFile, ImageFile *os.File) error {
+	err := visualizer.Run("neato", TempFile, ImageFile)
+	if err != nil {
+		return err
+	}
+	err = TempFile.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Remove(TempFile.Name())
+	if err != nil {
+		return err
+	}
+	err = ImageFile.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // get around a bug in the standard library, add suffix param
-func TempFileWithSuffix(dir, prefix, suffix string) (f *os.File, err error) {
-	f, err = ioutil.TempFile(dir, prefix)
+func TempFileWithSuffix(dir, prefix, suffix string) (*os.File, error) {
+	f, err := ioutil.TempFile(dir, prefix)
 	if err != nil {
 		return nil, err
 	}
 	defer os.Remove(f.Name())
 	f, err = os.Create(f.Name()+suffix)
-	return
+	return f, err
 }
 
 // Prints routing table in human readable table format
@@ -682,7 +711,7 @@ func printRTAsTable(r *rt.RoutingTable, humanForm bool) {
 		tmpl = "%-64v %-64v %-66v %-10v %-10v\n"
 		minLen = 100
 	}
-	fmt.Printf(tmpl, "ID1", "ID2", "EdgeID", "Capacity", "Weight")
+	fmt.Printf(tmpl, "ID1", "ID2", "Outpoint", "Capacity", "Weight")
 	channels := r.AllChannels()
 	if humanForm {
 		// Generate prefix tree for shortcuts
@@ -732,8 +761,8 @@ func printRTAsJSON(r *rt.RoutingTable) {
 	type ChannelDesc struct {
 		ID1      string  `json:"lightning_id1"`
 		ID2      string  `json:"lightning_id2"`
-		EdgeId   string  `json:"edge_id"`
-		Capacity float64 `json:"capacity"`
+		EdgeId   string  `json:"outpoint"`
+		Capacity int64   `json:"capacity"`
 		Weight   float64 `json:"weight"`
 	}
 	var channels struct {
