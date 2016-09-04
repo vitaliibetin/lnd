@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -113,6 +114,12 @@ func lndMain() error {
 	server.Start()
 
 	addInterruptHandler(func() {
+		// Marshal: lightningID -> Host
+		server.DBSleep()
+
+		// Marshal: RoutingTable
+		server.routingMgr.DBSleep()
+
 		ltndLog.Infof("Gracefully shutting down the server...")
 		server.Stop()
 		server.WaitForShutdown()
@@ -134,6 +141,22 @@ func lndMain() error {
 		grpcServer.Serve(lis)
 	}()
 
+	// Unmarshal: lightningID -> Host
+	server.DBWake()
+
+	// Unmarshal: RoutingTable
+	server.routingMgr.DBWake()
+	
+	fmt.Printf("lightningID -> Host: %v\n", server.lightningIDToHost)
+
+	// automatically connect to neighbors
+	server.ConnectToAllNeighbors()
+
+	time.Sleep(time.Second)
+
+	// request RoutingTable from all active peers
+	server.GetRecentChanges()
+	
 	// Wait for shutdown signal from either a graceful server stop or from
 	// the interrupt handler.
 	<-shutdownChannel

@@ -445,7 +445,7 @@ func (p *peer) writeMessage(msg lnwire.Message) error {
 
 	n, err := lnwire.WriteMessage(p.conn, msg, 0, p.chainNet)
 	atomic.AddUint64(&p.bytesSent, uint64(n))
-
+	
 	return err
 }
 

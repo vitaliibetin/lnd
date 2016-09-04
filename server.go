@@ -2,10 +2,14 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"sync"
 	"sync/atomic"
+	"strconv"
+	"path/filepath"
 
 	"github.com/btcsuite/fastsha256"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -37,6 +41,7 @@ type server struct {
 	// lightningID is the sha256 of the public key corresponding to our
 	// long-term identity private key.
 	lightningID [32]byte
+	lightningIDToHost map[string]string
 
 	listeners []net.Listener
 	peers     map[int32]*peer
@@ -82,19 +87,20 @@ func newServer(listenAddrs []string, wallet *lnwallet.LightningWallet,
 
 	serializedPubKey := privKey.PubKey().SerializeCompressed()
 	s := &server{
-		chanDB:       chanDB,
-		fundingMgr:   newFundingManager(wallet),
-		htlcSwitch:   newHtlcSwitch(),
-		invoices:     newInvoiceRegistry(),
-		lnwallet:     wallet,
-		identityPriv: privKey,
-		lightningID:  fastsha256.Sum256(serializedPubKey),
-		listeners:    listeners,
-		peers:        make(map[int32]*peer),
-		newPeers:     make(chan *peer, 100),
-		donePeers:    make(chan *peer, 100),
-		queries:      make(chan interface{}),
-		quit:         make(chan struct{}),
+		chanDB:       	   chanDB,
+		fundingMgr:   	   newFundingManager(wallet),
+		htlcSwitch:   	   newHtlcSwitch(),
+		invoices:     	   newInvoiceRegistry(),
+		lnwallet:     	   wallet,
+		identityPriv: 	   privKey,
+		lightningID:  	   fastsha256.Sum256(serializedPubKey),
+		lightningIDToHost: make(map[string]string),
+		listeners:    	   listeners,
+		peers:        	   make(map[int32]*peer),
+		newPeers:     	   make(chan *peer, 100),
+		donePeers:    	   make(chan *peer, 100),
+		queries:      	   make(chan interface{}),
+		quit:         	   make(chan struct{}),
 	}
 
 	// TODO(roasbeef): remove
@@ -102,7 +108,7 @@ func newServer(listenAddrs []string, wallet *lnwallet.LightningWallet,
 
 	// Create a new routing manager with ourself as the sole node within
 	// the graph.
-	s.routingMgr = routing.NewRoutingManager(graph.NewID(s.lightningID), nil)
+	s.routingMgr = routing.NewRoutingManager(graph.NewID(s.lightningID), nil, filepath.Join(cfg.DataDir, "rt"))
 
 	s.rpcServer = newRpcServer(s)
 
@@ -157,6 +163,16 @@ func (s *server) Stop() error {
 	s.wg.Wait()
 
 	return nil
+}
+
+func (s *server) DBWake() {
+	js, _ := ioutil.ReadFile(filepath.Join(cfg.DataDir, "db.json"))
+	json.Unmarshal(js, &s.lightningIDToHost)
+}
+
+func (s *server) DBSleep() {
+	js, _ := json.Marshal(s.lightningIDToHost)
+	ioutil.WriteFile(filepath.Join(cfg.DataDir, "db.json"), js, 0600)
 }
 
 // WaitForShutdown blocks all goroutines have been stopped.
@@ -313,7 +329,7 @@ func (s *server) handleListPeers(msg *listPeersMsg) {
 	}
 
 	msg.resp <- peers
-}
+} 
 
 // handleConnectPeer attempts to establish a connection to the address enclosed
 // within the passed connectPeerMsg. This function is *async*, a goroutine will
@@ -381,6 +397,12 @@ func (s *server) handleConnectPeer(msg *connectPeerMsg) {
 
 		msg.resp <- peer.id
 		msg.err <- nil
+
+		// caching host:port of neighbor
+		s.lightningIDToHost[peer.lightningAddr.Base58Adr.String()] = peer.lightningAddr.NetAddr.String()
+
+		msg := []byte(strconv.Itoa(cfg.PeerPort))
+		_, _ = peer.conn.Write(msg) // TODO(evg): processing errors
 	}()
 }
 
@@ -438,6 +460,34 @@ func (s *server) ConnectToPeer(addr *lndc.LNAdr) (int32, error) {
 	s.queries <- &connectPeerMsg{addr, reply, errChan}
 
 	return <-reply, <-errChan
+}
+
+func (s *server) ConnectToAllNeighbors() error {
+	for id, host := range s.lightningIDToHost {
+		idAtHost := fmt.Sprintf("%v@%v", id, host)
+		addr, err := lndc.LnAddrFromString(idAtHost, activeNetParams.Params)
+		if err != nil {
+			return err
+		}
+		peerID, _ := s.ConnectToPeer(addr)
+		fmt.Printf("automatically connect to peer: %v\n", peerID)
+	}
+	return nil
+}
+
+// request RoutingTable from all active peers
+func (s *server) GetRecentChanges() {
+	peers := s.Peers()
+	for _, peer := range peers {
+		msg := &lnwire.NeighborRstMessage{
+			lnwire.RoutingMessageBase{
+				SenderID:   graph.NewID(s.lightningID),
+				ReceiverID: graph.NewID([32]byte(peer.lightningID)),
+			},
+		}
+		done := make(chan struct{}, 1)
+		peer.queueMsg(msg, done)
+	}
 }
 
 // OpenChannel sends a request to the server to open a channel to the specified
@@ -498,6 +548,13 @@ func (s *server) listener(l net.Listener) {
 
 		peer.Start()
 		s.newPeers <- peer
+
+		msg := make([]byte, 256)
+		_, _ = peer.conn.Read(msg) // TODO(evg): processing errors
+
+		host, _, _ := net.SplitHostPort(peer.lightningAddr.NetAddr.String()) // TODO(evg): processing errors
+		// caching host:port of neighbor
+		s.lightningIDToHost[peer.lightningAddr.Base58Adr.String()] = net.JoinHostPort(host, string(msg))
 	}
 
 	s.wg.Done()
