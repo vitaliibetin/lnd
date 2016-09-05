@@ -96,6 +96,9 @@ type PaymentDescriptor struct {
 	// TODO(roasbeef): LogEntry interface??
 	sync.RWMutex
 
+	// R value used in HTLC
+	PreImage [32]byte
+
 	// RHash is the payment hash for this HTLC. The HTLC can be settled iff
 	// the preimage to this hash is presented.
 	RHash PaymentHash
@@ -757,7 +760,7 @@ func (lc *LightningChannel) SignNextCommitment() ([]byte, uint32, error) {
 // state.
 func (lc *LightningChannel) ReceiveNewCommitment(rawSig []byte,
 	ourLogIndex uint32) error {
-
+	walletLog.Info("We have received NewCommitment for log index %v", ourLogIndex)
 	theirCommitKey := lc.channelState.TheirCommitKey
 	theirMultiSigKey := lc.channelState.TheirMultiSigKey
 
@@ -1103,6 +1106,7 @@ func (lc *LightningChannel) ReceiveHTLC(htlc *lnwire.HTLCAddRequest) uint32 {
 		Timeout:   htlc.Expiry,
 		Amount:    btcutil.Amount(htlc.Amount),
 		Index:     lc.theirLogCounter,
+		Payload:   htlc.OnionBlob,
 	}
 
 	lc.theirLogIndex[pd.Index] = lc.theirUpdateLog.PushBack(pd)
@@ -1115,7 +1119,7 @@ func (lc *LightningChannel) ReceiveHTLC(htlc *lnwire.HTLCAddRequest) uint32 {
 // remote log index of the HTLC settled is returned in order to facilitate
 // creating the corresponding wire message. In the case the supplied pre-image
 // is invalid, an error is returned.
-func (lc *LightningChannel) SettleHTLC(preimage [32]byte) (uint32, error) {
+func (lc *LightningChannel) SettleHTLC(preimage [32]byte) (uint32, btcutil.Amount, error) {
 	var targetHTLC *list.Element
 
 	// TODO(roasbeef): optimize
@@ -1133,7 +1137,7 @@ func (lc *LightningChannel) SettleHTLC(preimage [32]byte) (uint32, error) {
 		}
 	}
 	if targetHTLC == nil {
-		return 0, fmt.Errorf("invalid payment hash")
+		return 0, 0, fmt.Errorf("invalid payment hash")
 	}
 
 	parentPd := targetHTLC.Value.(*PaymentDescriptor)
@@ -1144,12 +1148,13 @@ func (lc *LightningChannel) SettleHTLC(preimage [32]byte) (uint32, error) {
 		Index:       lc.ourLogCounter,
 		ParentIndex: parentPd.Index,
 		EntryType:   Settle,
+		PreImage:    preimage,
 	}
 
 	lc.ourUpdateLog.PushBack(pd)
 	lc.ourLogCounter++
 
-	return targetHTLC.Value.(*PaymentDescriptor).Index, nil
+	return targetHTLC.Value.(*PaymentDescriptor).Index,  parentPd.Amount, nil
 }
 
 // ReceiveHTLCSettle attempts to settle an existing outgoing HTLC indexed by an
@@ -1173,6 +1178,7 @@ func (lc *LightningChannel) ReceiveHTLCSettle(preimage [32]byte, logIndex uint32
 		ParentIndex: htlc.Index,
 		Index:       lc.theirLogCounter,
 		EntryType:   Settle,
+		PreImage:    preimage,
 	}
 
 	lc.theirUpdateLog.PushBack(pd)

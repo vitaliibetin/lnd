@@ -12,6 +12,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/roasbeef/btcd/wire"
 	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/fastsha256"
 )
 
 const (
@@ -66,12 +67,19 @@ type htlcSwitch struct {
 	chanIndex  map[wire.OutPoint]*link
 	interfaces map[wire.ShaHash][]*link
 
+	// Maps preimage hashes to outpoints. It allows chained settlement
+	hashRtoChan map[[32]byte] *[]wire.OutPoint
+
 	// TODO(roasbeef): msgs for dynamic link quality
 	linkControl chan interface{}
 
 	outgoingPayments chan *htlcPacket
 
 	htlcPlex chan *htlcPacket
+
+	// Channel for notifying external observers, like payment manager
+	// They should never modify obtained packets
+	htlcPlexOut chan *htlcPacket
 
 	// TODO(roasbeef): messaging chan to/from upper layer (routing - L3)
 
@@ -86,8 +94,10 @@ func newHtlcSwitch() *htlcSwitch {
 	return &htlcSwitch{
 		chanIndex:        make(map[wire.OutPoint]*link),
 		interfaces:       make(map[wire.ShaHash][]*link),
+		hashRtoChan:      make(map[[32]byte] *[]wire.OutPoint),
 		linkControl:      make(chan interface{}),
 		htlcPlex:         make(chan *htlcPacket, htlcQueueSize),
+		htlcPlexOut:      make(chan *htlcPacket, htlcQueueSize),
 		outgoingPayments: make(chan *htlcPacket, htlcQueueSize),
 	}
 }
@@ -124,10 +134,12 @@ func (h *htlcSwitch) Stop() error {
 // alternative error is returned.
 func (h *htlcSwitch) SendHTLC(htlcPkt *htlcPacket) error {
 	htlcPkt.err = make(chan error, 1)
-
+	hswcLog.Info("*** Step 1")
 	h.outgoingPayments <- htlcPkt
-
-	return <-htlcPkt.err
+	hswcLog.Info("*** Step 2")
+	err := <-htlcPkt.err
+	hswcLog.Info("*** Step 3")
+	return err
 }
 
 // htlcForwarder is responsible for optimally forwarding (and possibly
@@ -149,6 +161,7 @@ out:
 	for {
 		select {
 		case htlcPkt := <-h.outgoingPayments:
+			hswcLog.Infof("** htlcPkt := <-h.outgoingPayments:")
 			dest := htlcPkt.dest
 			chanInterface, ok := h.interfaces[dest]
 			if !ok {
@@ -160,11 +173,11 @@ out:
 
 			wireMsg := htlcPkt.msg.(*lnwire.HTLCAddRequest)
 			amt := btcutil.Amount(wireMsg.Amount)
-
 			// Handle this send request in a distinct goroutine in
 			// order to avoid a possible deadlock between the htlc
 			// switch and channel's htlc manager.
 			var sent bool
+			hswcLog.Infof("** Before sending money %v to %v", amt, dest[:])
 			for _, link := range chanInterface {
 				// TODO(roasbeef): implement HTLC fragmentation
 				//  * avoid full channel depletion at higher
@@ -173,13 +186,17 @@ out:
 				if link.availableBandwidth < amt {
 					continue
 				}
-
+				hswcLog.Infof("** Sending money %v to %v", amt, dest[:])
 				hswcLog.Tracef("Sending %v to %x", amt, dest[:])
-
 				// TODO(roasbeef): peer downstream should set chanPoint
 				wireMsg.ChannelPoint = link.chanPoint
 				go func() {
+					hswcLog.Info("**** Before link.linkChan <- htlcPkt")
+					hswcLog.Infof("Sending htlcPkt with message of type %T to link %v", htlcPkt.msg, link.linkChan)
 					link.linkChan <- htlcPkt
+					hswcLog.Info("**** After link.linkChan <- htlcPkt")
+//					htlcPkt.err <- nil
+					hswcLog.Info("**** After htlcPkt.err <- nil")
 				}()
 
 				// TODO(roasbeef): update link info on
@@ -195,18 +212,88 @@ out:
 			hswcLog.Errorf("Unable to send payment, insufficient capacity")
 			htlcPkt.err <- fmt.Errorf("Insufficient capacity")
 		case pkt := <-h.htlcPlex:
+			hswcLog.Info("*** pkt := <-h.htlcPlex:")
 			numUpdates += 1
 			// TODO(roasbeef): properly account with cleared vs settled
-			switch pkt.msg.(type) {
+			peerLog.Infof("Got message from plex channel: %v, %T", pkt, pkt.msg)
+			hswcLog.Infof("Got message from plex channel: %v, %T", pkt, pkt.msg)
+			switch msg := pkt.msg.(type) {
 			case *lnwire.HTLCAddRequest:
+				hswcLog.Info("From <-h.htlcPlex: *lnwire.HTLCAddRequest")
 				satRecv += pkt.amt
+				msg2, ok := pkt.msg.(*lnwire.HTLCAddRequest)
+				hswcLog.Infof("From <-h.htlcPlex: *lnwire.HTLCAddRequest ok=%v", ok)
+				hswcLog.Infof("From <-h.htlcPlex: *lnwire.HTLCAddRequest OnionBlob=%v len=%v", msg2.OnionBlob, len(msg2.OnionBlob))
+				hswcLog.Infof("From <-h.htlcPlex: *lnwire.HTLCAddRequest msg2.ChannelPoint=", msg2.ChannelPoint)
+				if msg2.OnionBlob != nil && len(msg2.OnionBlob)>=32 {
+					newDst, err := wire.NewShaHash(msg2.OnionBlob[0:32])
+					if err != nil {
+						hswcLog.Criticalf("Cannot get new destanation")
+						continue
+					}
+					hswcLog.Infof("Redirecting message further: %v",  hex.EncodeToString(newDst[:]))
+					// Save link which uses this hashR from which this message originates. So in future we now what to settle
+					hswcLog.Infof("Saving link from which message originates %v", msg.ChannelPoint)
+					if outPoints, ok := h.hashRtoChan[msg.RedemptionHashes[0]]; ok {
+						*outPoints = append(*outPoints, *msg.ChannelPoint)
+					} else {
+						outPoints := &([]wire.OutPoint{*msg.ChannelPoint})
+						h.hashRtoChan[msg.RedemptionHashes[0]] = outPoints
+					}
+					newOnion := msg2.OnionBlob[32:]
+					newHTLCAdd := *msg2
+					newHTLCAdd.OnionBlob = newOnion
+					newPkt := &htlcPacket{
+						msg: &newHTLCAdd,
+						dest: *newDst,
+						err: make(chan error, 1),
+					}
+					hswcLog.Infof("Before h.outgoingPayments <- newPkt: %v", pkt)
+					h.outgoingPayments <- newPkt
+					hswcLog.Infof("After h.outgoingPayments <- newPkt")
+
+				}
+				hswcLog.Info("Before h.htlcPlexOut <- pkt")
+				h.htlcPlexOut <- pkt
+				hswcLog.Info("After h.htlcPlexOut <- pkt")
 			case *lnwire.HTLCSettleRequest:
+				hswcLog.Info("From <-h.htlcPlex: *lnwire.HTLCSettleRequest")
+				hswcLog.Info("settle for preimage:", msg.RedemptionProofs[0])
 				satSent += pkt.amt
+				msg2, _ := pkt.msg.(*lnwire.HTLCSettleRequest)
+				newHTLCSettle := *msg2
+				newPkt := &htlcPacket{
+					msg: &newHTLCSettle,
+					dest: pkt.dest,
+					err: make(chan error, 1),
+				}
+				hashR := fastsha256.Sum256(msg.RedemptionProofs[0][:])
+				outPoints, ok := h.hashRtoChan[hashR]
+				if !ok {
+					hswcLog.Info("No channels with given hashR found")
+				} else {
+					hswcLog.Infof("Found %v channels with given hashR", len(*outPoints))
+					//TODO(mkl): Send htlc to this channels to initiate chained settlement
+					for _, outPoint := range(*outPoints){
+						hswcLog.Infof("Initiating chained settlement for channel %v", outPoint)
+						l, ok := h.chanIndex[outPoint];
+						if !ok {
+							hswcLog.Errorf("Cannot find link for outpoint: %v", outPoint)
+						}
+						l.linkChan <- newPkt
+					}
+					delete(h.hashRtoChan, hashR)
+				}
+
+			h.htlcPlexOut <- newPkt
+			default:
+				hswcLog.Info("From <-h.htlcPlex: unknown")
 			}
 
 			// TODO(roasbeef): parse dest/src, forward on outgoing
 			// link to complete multi-hop payments.
 		case <-logTicker.C:
+			hswcLog.Info("*** <-logTicker.C")
 			if numUpdates == 0 {
 				continue
 			}
@@ -220,6 +307,7 @@ out:
 			satRecv = 0
 			numUpdates = 0
 		case <-h.quit:
+			hswcLog.Info("*** <-h.quit")
 			break out
 		}
 	}

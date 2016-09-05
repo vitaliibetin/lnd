@@ -20,6 +20,7 @@ import (
 	"github.com/roasbeef/btcd/wire"
 	"github.com/roasbeef/btcutil"
 	"github.com/BitfuryLightning/tools/rt/graph"
+	"encoding/hex"
 )
 
 var (
@@ -345,7 +346,7 @@ out:
 	for atomic.LoadInt32(&p.disconnect) == 0 {
 		nextMsg, _, err := p.readNextMessage()
 		if err != nil {
-			peerLog.Infof("unable to read message: %v", err)
+			peerLog.Infof("unable to read message: %v from peer: %v", err, hex.EncodeToString(p.lightningID[:]))
 			break out
 		}
 
@@ -388,6 +389,12 @@ out:
 			*lnwire.RoutingTableTransferMessage:
 			// Convert to base routing message and set sender and receiver
 			p.server.routingMgr.ReceiveRoutingMessage(msg, graph.NewID(([32]byte)(p.lightningID)))
+		case *lnwire.PaymentInitiation,
+			*lnwire.PaymentInitiationConfirmation:
+			p.server.paymentManager.chPaymentIn <- &PaymentPacket{
+				src: p.lightningID,
+				msg: msg,
+			}
 		}
 
 		if isChanUpate {
@@ -589,7 +596,8 @@ out:
 			// Now that the channel is open, notify the Htlc
 			// Switch of a new active link.
 			chanSnapShot := newChan.StateSnapshot()
-			downstreamLink := make(chan *htlcPacket, 10)
+			// TODO(MKL): change back to downstreamLink := make(chan *htlcPacket, 10)
+			downstreamLink := make(chan *htlcPacket)
 			plexChan := p.server.htlcSwitch.RegisterLink(p,
 				chanSnapShot, downstreamLink)
 
@@ -844,6 +852,7 @@ func (p *peer) htlcManager(channel *lnwallet.LightningChannel,
 		"our_balance=%v, their_balance=%v, chain_height=%v",
 		channel.ChannelPoint(), chanStats.LocalBalance,
 		chanStats.RemoteBalance, chanStats.NumUpdates)
+	peerLog.Info("HTLC manager started. Downstream link = %v", downstreamLink)
 
 	// A new session for this active channel has just started, therefore we
 	// need to send our initial revocation window to the remote peer.
@@ -934,25 +943,31 @@ out:
 // HTLC's, timeout previously cleared HTLC's, and finally to settle currently
 // cleared HTLC's with the upstream peer.
 func (p *peer) handleDownStreamPkt(state *commitmentState, pkt *htlcPacket) {
+	peerLog.Info("zzz Step 0")
 	switch htlc := pkt.msg.(type) {
 	case *lnwire.HTLCAddRequest:
 		// A new payment has been initiated via the
 		// downstream channel, so we add the new HTLC
 		// to our local log, then update the commitment
 		// chains.
+		peerLog.Info("zzz Step 1")
 		index := state.channel.AddHTLC(htlc)
+		peerLog.Info("zzz Step 2")
 		p.queueMsg(htlc, nil)
+		peerLog.Info("zzz Step 3")
 
 		state.pendingBatch = append(state.pendingBatch, &pendingPayment{
 			htlc:  htlc,
 			index: index,
 			err:   pkt.err,
 		})
+		peerLog.Info("zzz Step 4")
 
 		// If this newly added update exceeds the max batch size, the
 		// initiate an update.
 		// TODO(roasbeef): enforce max HTLC's in flight limit
 		if len(state.pendingBatch) >= 10 {
+			peerLog.Info("zzz Step 4.1")
 			if sent, err := p.updateCommitTx(state); err != nil {
 				peerLog.Errorf("unable to update "+
 					"commitment: %v", err)
@@ -964,6 +979,35 @@ func (p *peer) handleDownStreamPkt(state *commitmentState, pkt *htlcPacket) {
 
 			state.numUnAcked += 1
 		}
+		peerLog.Info("zzz Step 5")
+	case *lnwire.HTLCSettleRequest:
+		logIndex, amount, err := state.channel.SettleHTLC(htlc.RedemptionProofs[0])
+		peerLog.Infof("After receiving *lnwire.HTLCSettleRequest from downstream logIndex=%v err=%v", logIndex, err)
+		peerLog.Infof("len(state.htlcsToSettle)=%v state.htlcsToSettle=%v",len(state.htlcsToSettle), state.htlcsToSettle)
+		if err != nil{
+			peerLog.Errorf("Trying settling not existing HTLC: %v", htlc)
+			return
+		}
+		settleMsg := &lnwire.HTLCSettleRequest{
+			ChannelPoint:     state.chanPoint,
+			HTLCKey:          lnwire.HTLCKey(logIndex),
+			RedemptionProofs: [][32]byte{htlc.RedemptionProofs[0]},
+		}
+		peerLog.Info("*** Before sending chained HTLC Settle request")
+
+		p.queueMsg(settleMsg, nil)
+		// TODO(mkl): probably update bandwidth
+		peerLog.Infof("Increasing link capacity %v by %v", state.chanPoint, amount)
+		p.server.htlcSwitch.UpdateLink(state.chanPoint, amount)
+
+		if sent, err := p.updateCommitTx(state); err != nil {
+			peerLog.Errorf("unable to update commitment: %v", err)
+			return
+		} else if sent{
+			// TODO(mkl): maybe state.numUnAcked += 1
+			state.numUnAcked += 1
+		}
+		peerLog.Infof("len(state.htlcsToSettle)=%v state.htlcsToSettle=%v",len(state.htlcsToSettle), state.htlcsToSettle)
 	}
 }
 
@@ -981,12 +1025,14 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 		index := state.channel.ReceiveHTLC(htlcPkt)
 
 		rHash := htlcPkt.RedemptionHashes[0]
+		peerLog.Info("HTLCAddRequest with hash:", rHash)
 		if invoice, found := p.server.invoices.lookupInvoice(rHash); found {
 			// TODO(roasbeef): check value
 			//  * onion layer strip should also be before invoice lookup
 			//  * also can immediately send the settle msg
 			invCopy := *invoice
 			invCopy.value = btcutil.Amount(htlcPkt.Amount)
+			peerLog.Info("*** Inserting invCopy:", invCopy)
 			state.htlcsToSettle[index] = invCopy
 		}
 	case *lnwire.HTLCSettleRequest:
@@ -1036,13 +1082,16 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 		// We've received a revocation from the remote chain, if valid,
 		// this moves the remote chain forward, and expands our
 		// revocation window.
+		peerLog.Info("xxx Step 1")
 		htlcsToForward, err := state.channel.ReceiveRevocation(htlcPkt)
+		peerLog.Infof("xxx Step 1.5, err=%v", err)
 		if err != nil {
 			peerLog.Errorf("unable to accept revocation: %v", err)
 			p.Disconnect()
 			return
 		}
-
+		peerLog.Info("xxx Step 2")
+		peerLog.Infof("After receiving *lnwire.CommitRevocation len(htlcsToForward)=%v, %v", len(htlcsToForward), htlcsToForward)
 		// We perform the HTLC forwarding to the switch in a distinct
 		// goroutine in order not to block the post-processing of
 		// HTLC's that are eligble for forwarding.
@@ -1052,7 +1101,7 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 			for _, htlc := range htlcsToForward {
 				// Send this fully activated HTLC to the htlc
 				// switch to continue the chained clear/settle.
-				state.switchChan <- p.logEntryToHtlcPkt(htlc)
+				state.switchChan <- p.logEntryToHtlcPkt(htlc, state.chanPoint)
 			}
 
 		}()
@@ -1063,55 +1112,67 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 		// existing) that the payment has been fully fulfilled.
 		var bandwidthUpdate btcutil.Amount
 		numSettled := 0
+		peerLog.Info("xxx Step 3")
 		for _, htlc := range htlcsToForward {
+			peerLog.Info("xxx Step 3.1")
 			if p, ok := state.clearedHTCLs[htlc.ParentIndex]; ok {
+				peerLog.Info("xxx Step 3.1.1")
+				peerLog.Info("xxx Step 3.1.1.1 p.err=%v", p.err)
 				p.err <- nil
+				peerLog.Info("xxx Step 3.1.2")
 				delete(state.clearedHTCLs, htlc.ParentIndex)
 			}
-
+			peerLog.Info("xxx Step 3.2")
 			// TODO(roasbeef): rework log entries to a shared
 			// interface.
 			if htlc.EntryType != lnwallet.Add {
 				continue
 			}
-
+			peerLog.Info("xxx Step 3.3")
 			// If we can't immediately settle this HTLC, then we
 			// can halt processing here.
 			invoice, ok := state.htlcsToSettle[htlc.Index]
 			if !ok {
+				peerLog.Infof("We cannot handle invoice for htlc.Index=%v", htlc.Index)
 				continue
 			}
-
+			peerLog.Info("xxx Step 3.4")
 			// Otherwise, we settle this HTLC within our local
 			// state update log, then send the update entry to the
 			// remote party.
-			logIndex, err := state.channel.SettleHTLC(invoice.paymentPreimage)
+			logIndex, _, err := state.channel.SettleHTLC(invoice.paymentPreimage)
+			peerLog.Info("xxx Step 3.5")
 			if err != nil {
 				peerLog.Errorf("unable to settle htlc: %v", err)
 				p.Disconnect()
 				continue
 			}
-
+			peerLog.Info("xxx Step 3.6")
 			settleMsg := &lnwire.HTLCSettleRequest{
 				ChannelPoint:     state.chanPoint,
 				HTLCKey:          lnwire.HTLCKey(logIndex),
 				RedemptionProofs: [][32]byte{invoice.paymentPreimage},
 			}
+			peerLog.Info("xxx Step 3.7")
+			peerLog.Info("*** Before sending HTLC Settle request")
 			p.queueMsg(settleMsg, nil)
+			peerLog.Info("xxx Step 3.8")
 			delete(state.htlcsToSettle, htlc.Index)
 
 			bandwidthUpdate += invoice.value
 
 			numSettled++
 		}
-
+		peerLog.Info("xxx Step 4")
 		if numSettled == 0 {
+			peerLog.Info("xxx Step 4.1 RETURN !!!!")
 			return
 		}
 
 		// Send an update to the htlc switch of our newly available
 		// payment bandwidth.
 		// TODO(roasbeef): ideally should wait for next state update.
+		peerLog.Info("xxx Step 5")
 		if bandwidthUpdate != 0 {
 			p.server.htlcSwitch.UpdateLink(state.chanPoint,
 				bandwidthUpdate)
@@ -1120,6 +1181,7 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 		// With all the settle updates added to the local and remote
 		// HTLC logs, initiate a state transition by updating the
 		// remote commitment chain.
+		peerLog.Info("xxx Step 6")
 		if sent, err := p.updateCommitTx(state); err != nil {
 			peerLog.Errorf("unable to update commitment: %v", err)
 			p.Disconnect()
@@ -1128,6 +1190,7 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 			// TODO(roasbeef): wait to delete from htlcsToSettle?
 			state.numUnAcked += 1
 		}
+		peerLog.Info("xxx Step 7")
 	}
 }
 
@@ -1173,7 +1236,7 @@ func (p *peer) updateCommitTx(state *commitmentState) (bool, error) {
 // log entry the corresponding htlcPacket with src/dest set along with the
 // proper wire message. This helepr method is provided in order to aide an
 // htlcManager in forwarding packets to the htlcSwitch.
-func (p *peer) logEntryToHtlcPkt(pd *lnwallet.PaymentDescriptor) *htlcPacket {
+func (p *peer) logEntryToHtlcPkt(pd *lnwallet.PaymentDescriptor, chanPoint *wire.OutPoint) *htlcPacket {
 	pkt := &htlcPacket{}
 
 	// TODO(roasbeef): alter after switch to log entry interface
@@ -1184,11 +1247,14 @@ func (p *peer) logEntryToHtlcPkt(pd *lnwallet.PaymentDescriptor) *htlcPacket {
 		msg = &lnwire.HTLCAddRequest{
 			Amount:           lnwire.CreditsAmount(pd.Amount),
 			RedemptionHashes: [][32]byte{pd.RHash},
+			OnionBlob:        pd.Payload,
+			ChannelPoint:     chanPoint,
 		}
 	case lnwallet.Settle:
 		// TODO(roasbeef): thread through preimage
 		msg = &lnwire.HTLCSettleRequest{
 			HTLCKey: lnwire.HTLCKey(pd.ParentIndex),
+			RedemptionProofs: [][32]byte{pd.PreImage},
 		}
 	}
 

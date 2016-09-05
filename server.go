@@ -52,6 +52,8 @@ type server struct {
 
 	routingMgr *routing.RoutingManager
 
+	paymentManager *PaymentManager
+
 	newPeers  chan *peer
 	donePeers chan *peer
 	queries   chan interface{}
@@ -102,6 +104,10 @@ func newServer(listenAddrs []string, wallet *lnwallet.LightningWallet,
 	// the graph.
 	s.routingMgr = routing.NewRoutingManager(graph.NewID(s.lightningID), nil)
 
+	s.paymentManager = NewPaymentManager()
+	s.paymentManager.LightningID = s.lightningID
+	s.paymentManager.invoices = s.invoices
+
 	s.rpcServer = newRpcServer(s)
 
 	return s, nil
@@ -124,6 +130,7 @@ func (s *server) Start() {
 	s.fundingMgr.Start()
 	s.htlcSwitch.Start()
 	s.routingMgr.Start()
+	s.paymentManager.Start()
 
 	s.wg.Add(1)
 	go s.queryHandler()
@@ -279,6 +286,27 @@ out:
 			} else {
 				srvrLog.Errorf("Can't find peer to send message %v", receiverID)
 			}
+		case msg := <- s.paymentManager.chPaymentOut:
+			// TODO(mkl): refactor code. Delete duplicates with above code.
+			var targetPeer *peer
+			for _, peer := range s.peers { // TODO: threadsafe api
+				// We found the the target
+				if peer.lightningID == msg.dst {
+					targetPeer = peer
+					break
+				}
+			}
+			if targetPeer != nil {
+				fndgLog.Info("Peer found. Sending message")
+				done := make(chan struct{}, 1)
+				targetPeer.queueMsg(msg.msg, done)
+			} else {
+				srvrLog.Errorf("Can't find peer %v to send message %v of type %T", msg.dst, msg.msg, msg.msg)
+			}
+		case pkt := <- s.paymentManager.chHTLCOut:
+			s.htlcSwitch.SendHTLC(pkt)
+		case pkt := <-s.htlcSwitch.htlcPlexOut:
+			s.paymentManager.chHTLCIn <- pkt
 		case <-s.quit:
 			break out
 		}

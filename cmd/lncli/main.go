@@ -61,6 +61,8 @@ func main() {
 		PendingChannelsCommand,
 		SendPaymentCommand,
 		ShowRoutingTableCommand,
+		SendMultihopPayment,
+		FindPathCommand,
 	}
 
 	if err := app.Run(os.Args); err != nil {
