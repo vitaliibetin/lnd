@@ -108,7 +108,7 @@ func newServer(listenAddrs []string, wallet *lnwallet.LightningWallet,
 
 	// Create a new routing manager with ourself as the sole node within
 	// the graph.
-	s.routingMgr = routing.NewRoutingManager(graph.NewID(s.lightningID), nil, filepath.Join(cfg.DataDir, "rt"))
+	s.routingMgr = routing.NewRoutingManager(graph.NewID(s.lightningID), nil, s.chanDB)
 
 	s.rpcServer = newRpcServer(s)
 

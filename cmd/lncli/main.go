@@ -61,6 +61,7 @@ func main() {
 		PendingChannelsCommand,
 		SendPaymentCommand,
 		ShowRoutingTableCommand,
+		DeleteRoutingTableCommand,
 	}
 
 	if err := app.Run(os.Args); err != nil {

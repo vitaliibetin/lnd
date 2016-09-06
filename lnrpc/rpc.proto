@@ -18,6 +18,7 @@ service Lightning {
 
     rpc SendPayment(stream SendRequest) returns (stream SendResponse);
     rpc ShowRoutingTable(ShowRoutingTableRequest) returns (ShowRoutingTableResponse);
+    rpc DeleteRoutingTable(DeleteRoutingTableRequest) returns (DeleteRoutingTableResponse);
 }
 
 message SendRequest {
@@ -223,3 +224,21 @@ message ShowRoutingTableRequest {
 message ShowRoutingTableResponse {
     string rt = 1;
 }
+
+message DeleteRoutingTableRequest {
+}
+
+message DeleteRoutingTableResponse {
+}
+
+
+
+
+
+
+
+
+
+
+
+

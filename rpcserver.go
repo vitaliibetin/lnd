@@ -495,3 +495,11 @@ func (r *rpcServer) ShowRoutingTable(ctx context.Context,
 		Rt: buff.String(),
 	}, err
 }
+
+func (r *rpcServer) DeleteRoutingTable(ctx context.Context, 
+	in *lnrpc.DeleteRoutingTableRequest) (*lnrpc.DeleteRoutingTableResponse, error) {
+	rpcsLog.Debugf("[DeleteRoutingTable]")
+	err := r.server.routingMgr.DeleteRoutingTable()
+	fmt.Println("Deleted Routing Table")
+	return &lnrpc.DeleteRoutingTableResponse{}, err
+}

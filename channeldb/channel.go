@@ -42,6 +42,8 @@ var (
 	// closure.
 	channelLogBucket = []byte("clb")
 
+	routingManagerBucket = []byte("rmb")
+
 	// identityKey is the key for storing this node's current LD identity key.
 	identityKey = []byte("idk")
 
@@ -85,6 +87,8 @@ var (
 	// deliveryScriptsKey stores the scripts for the final delivery in the
 	// case of a cooperative closure.
 	deliveryScriptsKey = []byte("dsk")
+
+	routingTableKey = []byte("rtk")
 )
 
 // OpenChannel...

@@ -703,3 +703,24 @@ func printRTAsJSON(r *rt.RoutingTable){
 	}
 	printRespJson(channels)
 }
+
+var DeleteRoutingTableCommand = cli.Command{
+	Name: 		 "deleteroutingtable",
+	Description: "delete routing table of node",
+	Action: 	 deleteRoutingTable,
+}
+
+func deleteRoutingTable(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client := getClient(ctx)
+
+	req := &lnrpc.DeleteRoutingTableRequest{}
+
+	resp, err := client.DeleteRoutingTable(ctxb, req)
+	if err != nil {
+		return err
+	}
+
+	printRespJson(resp)
+	return nil
+}
