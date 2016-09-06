@@ -43,6 +43,7 @@ var (
 	channelLogBucket = []byte("clb")
 
 	routingManagerBucket = []byte("rmb")
+	lightningIDToHostBucket = []byte("ihb")
 
 	// identityKey is the key for storing this node's current LD identity key.
 	identityKey = []byte("idk")

@@ -115,11 +115,13 @@ func lndMain() error {
 
 	addInterruptHandler(func() {
 		// Marshal: lightningID -> Host
-		server.DBSleep()
+		if err := server.DBSleep(); err != nil {
+			fmt.Println(err)
+		}
 
 		// Marshal: RoutingTable
 		if err := server.routingMgr.DBSleep(); err != nil {
-			fmt.Printf("routingMgr: incorrect save data", err)
+			fmt.Println(err)
 		}
 
 		ltndLog.Infof("Gracefully shutting down the server...")
@@ -144,7 +146,9 @@ func lndMain() error {
 	}()
 
 	// Unmarshal: lightningID -> Host
-	server.DBWake()
+	if err := server.DBWake(); err != nil {
+		return err
+	}
 
 	// Unmarshal: RoutingTable
 	if err := server.routingMgr.DBWake(); err != nil {

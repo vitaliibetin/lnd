@@ -2,14 +2,14 @@ package main
 
 import (
 	"encoding/hex"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
 	"net"
 	"sync"
 	"sync/atomic"
 	"strconv"
-	"path/filepath"
+	// "path/filepath"
 
 	"github.com/btcsuite/fastsha256"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -165,14 +165,14 @@ func (s *server) Stop() error {
 	return nil
 }
 
-func (s *server) DBWake() {
-	js, _ := ioutil.ReadFile(filepath.Join(cfg.DataDir, "db.json"))
-	json.Unmarshal(js, &s.lightningIDToHost)
+func (s *server) DBWake() error {
+	lightningIDToHost, err := s.chanDB.FetchLightningIDToHost()
+	s.lightningIDToHost = lightningIDToHost
+	return err
 }
 
-func (s *server) DBSleep() {
-	js, _ := json.Marshal(s.lightningIDToHost)
-	ioutil.WriteFile(filepath.Join(cfg.DataDir, "db.json"), js, 0600)
+func (s *server) DBSleep() error {
+	return s.chanDB.PutLightningIDToHost(s.lightningIDToHost)
 }
 
 // WaitForShutdown blocks all goroutines have been stopped.

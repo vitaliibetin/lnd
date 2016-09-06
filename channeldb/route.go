@@ -8,7 +8,6 @@ func (d *DB) PutRoutingTable(routingTable []byte) error {
 		if err != nil {
 			return err
 		}
-
 		return bucket.Put(routingTableKey, routingTable)
 	})
 }
