@@ -62,6 +62,9 @@ func main() {
 		SendPaymentCommand,
 		ShowRoutingTableCommand,
 		DeleteRoutingTableCommand,
+		GetNetworkInfoCommand,
+		DeleteNetworkInfoCommand,
+		SearchNetworkInfoCommand,
 	}
 
 	if err := app.Run(os.Args); err != nil {

@@ -114,14 +114,12 @@ func lndMain() error {
 	server.Start()
 
 	addInterruptHandler(func() {
-		// Marshal: lightningID -> Host
-		if err := server.DBSleep(); err != nil {
-			fmt.Println(err)
+		if err := server.routingMgr.Unload(); err != nil {
+			ltndLog.Critical(err)
 		}
 
-		// Marshal: RoutingTable
-		if err := server.routingMgr.DBSleep(); err != nil {
-			fmt.Println(err)
+		if err := server.networkMgr.Unload(); err != nil {
+			ltndLog.Critical(err)
 		}
 
 		ltndLog.Infof("Gracefully shutting down the server...")
@@ -145,17 +143,15 @@ func lndMain() error {
 		grpcServer.Serve(lis)
 	}()
 
-	// Unmarshal: lightningID -> Host
-	if err := server.DBWake(); err != nil {
+	if err := server.routingMgr.Load(); err != nil {
 		return err
 	}
 
-	// Unmarshal: RoutingTable
-	if err := server.routingMgr.DBWake(); err != nil {
+	if err := server.networkMgr.Load(); err != nil {
 		return err
 	}
 	
-	fmt.Printf("lightningID -> Host: %v\n", server.lightningIDToHost)
+	// fmt.Printf("lightningID -> Host: %v\n", server.networkMgr.FetchNetworkInfo())
 
 	// automatically connect to neighbors
 	server.ConnectToAllNeighbors()

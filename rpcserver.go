@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-
 	"sync"
 	"sync/atomic"
+	"github.com/BitfuryLightning/tools/rt/graph"
 
 	"github.com/lightningnetwork/lnd/lndc"
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -168,6 +168,15 @@ func (r *rpcServer) ConnectPeer(ctx context.Context,
 
 	if in.Addr == nil {
 		return nil, fmt.Errorf("need: lnc pubkeyhash@hostname")
+	}
+
+	if in.Addr.Host == "" {
+		info := r.server.networkMgr.FetchNetworkInfo()
+		if host, ok := info[in.Addr.PubKeyHash]; ok {
+			in.Addr.Host = host
+		} else {
+			return nil, fmt.Errorf("unknown how to connect")
+		}
 	}
 
 	idAtHost := fmt.Sprintf("%v@%v", in.Addr.PubKeyHash, in.Addr.Host)
@@ -500,6 +509,43 @@ func (r *rpcServer) DeleteRoutingTable(ctx context.Context,
 	in *lnrpc.DeleteRoutingTableRequest) (*lnrpc.DeleteRoutingTableResponse, error) {
 	rpcsLog.Debugf("[DeleteRoutingTable]")
 	err := r.server.routingMgr.DeleteRoutingTable()
-	fmt.Println("Deleted Routing Table")
 	return &lnrpc.DeleteRoutingTableResponse{}, err
 }
+
+func (r *rpcServer) GetNetworkInfo(ctx context.Context,
+	in *lnrpc.GetNetworkInfoRequest) (*lnrpc.GetNetworkInfoResponse, error) {
+	rpcsLog.Debugf("[GetNetworkInfo]")
+	info := r.server.networkMgr.FetchNetworkInfo()
+	return &lnrpc.GetNetworkInfoResponse{
+		Info: info,
+	}, nil
+}
+
+func (r *rpcServer) DeleteNetworkInfo(ctx context.Context,
+	in *lnrpc.DeleteNetworkInfoRequest) (*lnrpc.DeleteNetworkInfoResponse, error) {
+	rpcsLog.Debugf("[DeleteNetworkInfo]")
+	err := r.server.networkMgr.DeleteNetworkInfo()
+	return &lnrpc.DeleteNetworkInfoResponse{}, err
+} 
+
+func (r *rpcServer) SearchNetworkInfo(ctx context.Context,
+	in *lnrpc.SearchNetworkInfoRequest) (*lnrpc.SearchNetworkInfoResponse, error) {
+	rpcsLog.Debugf("[SearchNetworkInfo]")
+	for _, peer := range r.server.Peers() {
+		peer.server.networkMgr.NetworkRequestAll(graph.NewID([32]byte(peer.lightningID)))
+	}
+	return &lnrpc.SearchNetworkInfoResponse{}, nil
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

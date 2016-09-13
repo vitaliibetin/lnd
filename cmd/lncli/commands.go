@@ -159,6 +159,9 @@ func connectPeer(ctx *cli.Context) error {
 
 	targetAddress := ctx.Args().Get(0)
 	splitAddr := strings.Split(targetAddress, "@")
+	if len(splitAddr) == 1 {
+		splitAddr = append(splitAddr, "")
+	}
 	if len(splitAddr) != 2 {
 		return fmt.Errorf("target address expected in format: lnid@host:port")
 	}
@@ -724,3 +727,82 @@ func deleteRoutingTable(ctx *cli.Context) error {
 	printRespJson(resp)
 	return nil
 }
+
+var GetNetworkInfoCommand = cli.Command{
+	Name: 		 "getnetworkinfo",
+	Description: "get network info",
+	Action: 	  getNetworkInfo,
+}
+
+func getNetworkInfo(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client := getClient(ctx)
+
+	req := &lnrpc.GetNetworkInfoRequest{}
+
+	resp, err := client.GetNetworkInfo(ctxb, req)
+	if err != nil {
+		return err
+	}
+
+	printRespJson(resp)
+	return nil
+}
+
+var DeleteNetworkInfoCommand = cli.Command{
+	Name: 		 "deletenetworkinfo",
+	Description: "delete network info",
+	Action:      deleteNetworkInfo,
+}
+
+func deleteNetworkInfo(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client := getClient(ctx)
+
+	req := &lnrpc.DeleteNetworkInfoRequest{}
+
+	resp, err := client.DeleteNetworkInfo(ctxb, req)
+	if err != nil {
+		return err
+	}
+
+	printRespJson(resp)
+	return nil
+}
+
+var SearchNetworkInfoCommand = cli.Command{
+	Name: 		 "searchnetworkinfo",
+	Description: "search network info",
+	Action: 	  searchNetworkInfo,
+}
+
+func searchNetworkInfo(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client := getClient(ctx)
+
+	req := &lnrpc.SearchNetworkInfoRequest{}
+
+	resp, err := client.SearchNetworkInfo(ctxb, req)
+	if err != nil {
+		return err
+	}
+
+	printRespJson(resp)
+	return nil
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

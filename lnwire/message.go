@@ -52,6 +52,10 @@ const (
 	CmdRoutingTableRequestMessage  = uint32(3040)
 	CmdRoutingTableTransferMessage = uint32(3050)
 
+	// Commands for network manager
+	CmdNetworkRequestAllMessage  = uint32(3500)
+	CmdNetworkResponseAllMessage = uint32(3600)
+
 	// Commands for reporting protocol errors.
 	CmdErrorGeneric = uint32(4000)
 )
@@ -114,6 +118,10 @@ func makeEmptyMessage(command uint32) (Message, error) {
 		msg = &RoutingTableRequestMessage{}
 	case CmdRoutingTableTransferMessage:
 		msg = &RoutingTableTransferMessage{}
+	case CmdNetworkRequestAllMessage:
+		msg = &NetworkRequestAllMessage{}
+	case CmdNetworkResponseAllMessage:
+		msg = &NetworkResponseAllMessage{}
 	default:
 		return nil, fmt.Errorf("unhandled command [%d]", command)
 	}

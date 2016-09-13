@@ -2,14 +2,11 @@ package main
 
 import (
 	"encoding/hex"
-	// "encoding/json"
 	"fmt"
-	// "io/ioutil"
 	"net"
 	"sync"
 	"sync/atomic"
 	"strconv"
-	// "path/filepath"
 
 	"github.com/btcsuite/fastsha256"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -21,6 +18,8 @@ import (
 	"github.com/roasbeef/btcutil"
 
 	"github.com/BitfuryLightning/tools/routing"
+	"github.com/BitfuryLightning/tools/network"
+	"github.com/BitfuryLightning/tools/network/idh"
 	"github.com/BitfuryLightning/tools/rt"
 	"github.com/BitfuryLightning/tools/rt/graph"
 	"github.com/roasbeef/btcwallet/waddrmgr"
@@ -41,7 +40,6 @@ type server struct {
 	// lightningID is the sha256 of the public key corresponding to our
 	// long-term identity private key.
 	lightningID [32]byte
-	lightningIDToHost map[string]string
 
 	listeners []net.Listener
 	peers     map[int32]*peer
@@ -58,6 +56,7 @@ type server struct {
 	invoices   *invoiceRegistry
 
 	routingMgr *routing.RoutingManager
+	networkMgr *network.NetworkManager
 
 	newPeers  chan *peer
 	donePeers chan *peer
@@ -94,7 +93,6 @@ func newServer(listenAddrs []string, wallet *lnwallet.LightningWallet,
 		lnwallet:     	   wallet,
 		identityPriv: 	   privKey,
 		lightningID:  	   fastsha256.Sum256(serializedPubKey),
-		lightningIDToHost: make(map[string]string),
 		listeners:    	   listeners,
 		peers:        	   make(map[int32]*peer),
 		newPeers:     	   make(chan *peer, 100),
@@ -109,6 +107,7 @@ func newServer(listenAddrs []string, wallet *lnwallet.LightningWallet,
 	// Create a new routing manager with ourself as the sole node within
 	// the graph.
 	s.routingMgr = routing.NewRoutingManager(graph.NewID(s.lightningID), nil, s.chanDB)
+	s.networkMgr = network.NewNetworkManager(graph.NewID(s.lightningID), chanDB)
 
 	s.rpcServer = newRpcServer(s)
 
@@ -132,6 +131,7 @@ func (s *server) Start() {
 	s.fundingMgr.Start()
 	s.htlcSwitch.Start()
 	s.routingMgr.Start()
+	s.networkMgr.Start()
 
 	s.wg.Add(1)
 	go s.queryHandler()
@@ -157,22 +157,13 @@ func (s *server) Stop() error {
 	s.lnwallet.Shutdown()
 	s.fundingMgr.Stop()
 	s.routingMgr.Stop()
+	s.networkMgr.Stop()
 
 	// Signal all the lingering goroutines to quit.
 	close(s.quit)
 	s.wg.Wait()
 
 	return nil
-}
-
-func (s *server) DBWake() error {
-	lightningIDToHost, err := s.chanDB.FetchLightningIDToHost()
-	s.lightningIDToHost = lightningIDToHost
-	return err
-}
-
-func (s *server) DBSleep() error {
-	return s.chanDB.PutLightningIDToHost(s.lightningIDToHost)
 }
 
 // WaitForShutdown blocks all goroutines have been stopped.
@@ -312,6 +303,24 @@ out:
 			} else {
 				srvrLog.Errorf("Can't find peer to send message %v", receiverID)
 			}
+		case msg := <-s.networkMgr.ChanOutput:
+			msg2 := msg.(lnwire.NetworkMessage)
+			receiverID := msg2.GetReceiverID().ToByte32()
+			var targetPeer *peer
+			for _, peer := range s.peers {
+				if peer.lightningID == receiverID {
+					targetPeer = peer
+					break
+				}
+			}
+			if targetPeer != nil {
+				srvrLog.Errorf("Peer found. Sending message")
+				done := make(chan struct{}, 1)
+				targetPeer.queueMsg(msg.(lnwire.Message), done)
+			} else {
+				srvrLog.Errorf("Can't find peer to send message %v", receiverID)
+			}
+
 		case <-s.quit:
 			break out
 		}
@@ -399,7 +408,9 @@ func (s *server) handleConnectPeer(msg *connectPeerMsg) {
 		msg.err <- nil
 
 		// caching host:port of neighbor
-		s.lightningIDToHost[peer.lightningAddr.Base58Adr.String()] = peer.lightningAddr.NetAddr.String()
+		info := make(idh.LightningIDToHost)
+		info[peer.lightningAddr.Base58Adr.String()] = peer.lightningAddr.NetAddr.String()
+		s.networkMgr.PutNetworkInfo(info)
 
 		msg := []byte(strconv.Itoa(cfg.PeerPort))
 		_, _ = peer.conn.Write(msg) // TODO(evg): processing errors
@@ -463,7 +474,7 @@ func (s *server) ConnectToPeer(addr *lndc.LNAdr) (int32, error) {
 }
 
 func (s *server) ConnectToAllNeighbors() error {
-	for id, host := range s.lightningIDToHost {
+	for id, host := range s.networkMgr.FetchNetworkInfo() {
 		idAtHost := fmt.Sprintf("%v@%v", id, host)
 		addr, err := lndc.LnAddrFromString(idAtHost, activeNetParams.Params)
 		if err != nil {
@@ -549,12 +560,14 @@ func (s *server) listener(l net.Listener) {
 		peer.Start()
 		s.newPeers <- peer
 
-		msg := make([]byte, 256)
+		msg := make([]byte, 256) // TODO(evg): 16?
 		_, _ = peer.conn.Read(msg) // TODO(evg): processing errors
 
 		host, _, _ := net.SplitHostPort(peer.lightningAddr.NetAddr.String()) // TODO(evg): processing errors
 		// caching host:port of neighbor
-		s.lightningIDToHost[peer.lightningAddr.Base58Adr.String()] = net.JoinHostPort(host, string(msg))
+		info := make(idh.LightningIDToHost)
+		info[peer.lightningAddr.Base58Adr.String()] = net.JoinHostPort(host, string(msg))
+		s.networkMgr.PutNetworkInfo(info) 
 	}
 
 	s.wg.Done()

@@ -19,6 +19,9 @@ service Lightning {
     rpc SendPayment(stream SendRequest) returns (stream SendResponse);
     rpc ShowRoutingTable(ShowRoutingTableRequest) returns (ShowRoutingTableResponse);
     rpc DeleteRoutingTable(DeleteRoutingTableRequest) returns (DeleteRoutingTableResponse);
+    rpc GetNetworkInfo(GetNetworkInfoRequest) returns (GetNetworkInfoResponse);
+    rpc DeleteNetworkInfo(DeleteNetworkInfoRequest) returns (DeleteNetworkInfoResponse);
+    rpc SearchNetworkInfo(SearchNetworkInfoRequest) returns (SearchNetworkInfoResponse);
 }
 
 message SendRequest {
@@ -231,13 +234,22 @@ message DeleteRoutingTableRequest {
 message DeleteRoutingTableResponse {
 }
 
+message GetNetworkInfoRequest {
+}
 
+message GetNetworkInfoResponse {
+    map<string, string> info = 1;
+}
 
+message DeleteNetworkInfoRequest{
+}
 
+message DeleteNetworkInfoResponse{
+}
 
+message SearchNetworkInfoRequest {}
 
-
-
+message SearchNetworkInfoResponse {}
 
 
 

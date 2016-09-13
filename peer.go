@@ -391,6 +391,15 @@ out:
 			msg2.SetSenderID(graph.NewID(([32]byte)(p.lightningID)))
 			msg2.SetReceiverID(graph.NewID(([32]byte)(p.server.lightningID)))
 			p.server.routingMgr.ChIn <- msg
+
+		case *lnwire.NetworkRequestAllMessage,
+			*lnwire.NetworkResponseAllMessage:
+
+			msg2 := msg.(lnwire.NetworkMessage)
+			msg2.SetSenderID(graph.NewID([32]byte(p.lightningID)))
+			msg2.SetReceiverID(graph.NewID([32]byte(p.server.lightningID)))
+			p.server.networkMgr.ChanInput <- msg
+			fmt.Printf("Receive: %T\n", msg)
 		}
 
 		if isChanUpate {

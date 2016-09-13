@@ -1,19 +1,27 @@
 package channeldb
 
-import "github.com/boltdb/bolt"
+import (
+	"bytes"
+	"github.com/boltdb/bolt"
+	"github.com/BitfuryLightning/tools/rt"
+)
 
-func (d *DB) PutRoutingTable(routingTable []byte) error {
+func (d *DB) PutRoutingTable(routingTable *rt.RoutingTable) error {
+	var buffer bytes.Buffer
+	if err := routingTable.Marshall(&buffer); err != nil {
+		return err
+	}
 	return d.store.Update(func (tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(routingManagerBucket)
 		if err != nil {
 			return err
 		}
-		return bucket.Put(routingTableKey, routingTable)
+		return bucket.Put(routingTableKey, buffer.Bytes())
 	})
 }
 
-func (d *DB) FetchRoutingTable() ([]byte, error) {
-	var routingTable []byte
+func (d *DB) FetchRoutingTable() (*rt.RoutingTable, error) {
+	routingTable := rt.NewRoutingTable()
 	err := d.store.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(routingManagerBucket)
 		if bucket == nil {
@@ -23,9 +31,10 @@ func (d *DB) FetchRoutingTable() ([]byte, error) {
 		if routingTableBytes == nil {
 			return nil
 		}
-		routingTable = make([]byte, len(routingTableBytes))
-		copy(routingTable, routingTableBytes)
-		return nil
+		buffer := bytes.NewBuffer(routingTableBytes)
+		var err error
+		routingTable, err = rt.UnmarshallRoutingTable(buffer)
+		return err
 	})
 	return routingTable, err
 }
