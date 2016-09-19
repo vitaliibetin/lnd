@@ -143,7 +143,7 @@ func lndMain() error {
 	lnrpc.RegisterLightningServer(grpcServer, server.rpcServer)
 
 	// Finally, start the grpc server listening for HTTP/2 connections.
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", loadedConfig.RPCPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", loadedConfig.RPCPort))
 	if err != nil {
 		fmt.Printf("failed to listen: %v", err)
 		return err
