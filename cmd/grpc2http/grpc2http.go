@@ -53,7 +53,15 @@ func NewGrpc2HttpConverter(grpcAdrress, httpAddress string) *Grpc2HttpConverter 
 	}
 }
 
+func writeJsonResp(resp http.ResponseWriter, data interface{}){
+	resp.Header().Add("Access-Control-Allow-Origin", "*")
+	resp.WriteHeader(200)
+	json.NewEncoder(resp).Encode(data)
+}
+
+
 func writeErrorResp(resp http.ResponseWriter, code int, msg string){
+	resp.Header().Add("Access-Control-Allow-Origin", "*")
 	resp.WriteHeader(code)
 	data := struct {
 		Error string `json:"error"`
@@ -71,7 +79,7 @@ func (g *Grpc2HttpConverter) handleGetInfo(resp http.ResponseWriter,
 	ctxb := context.Background()
 	lnReq := &lnrpc.GetInfoRequest{}
 	lnResp, _ := client.GetInfo(ctxb, lnReq)
-	json.NewEncoder(resp).Encode(lnResp)
+	writeJsonResp(resp, lnResp)
 }
 
 func (g *Grpc2HttpConverter) handleNewAddress(resp http.ResponseWriter,
@@ -118,7 +126,7 @@ func (g *Grpc2HttpConverter) handleNewAddress(resp http.ResponseWriter,
 		writeErrorResp(resp, 500, err.Error())
 		return
 	}
-	json.NewEncoder(resp).Encode(addr)
+	writeJsonResp(resp, addr)
 }
 
 func (g *Grpc2HttpConverter)handleConnectPeer(resp http.ResponseWriter,
@@ -158,7 +166,7 @@ func (g *Grpc2HttpConverter)handleConnectPeer(resp http.ResponseWriter,
 		writeErrorResp(resp, 500, err.Error())
 		return
 	}
-	json.NewEncoder(resp).Encode(lnid)
+	writeJsonResp(resp, lnid)
 }
 
 func (g *Grpc2HttpConverter) handleOpenChannel(resp http.ResponseWriter,
@@ -205,14 +213,14 @@ func (g *Grpc2HttpConverter) handleOpenChannel(resp http.ResponseWriter,
 	}
 
 	if !inpData.Block {
-		resp.Write([]byte("{}"))
+		writeJsonResp(resp, struct {}{})
 		return
 	}
 
 	for {
 		lnResp, err := lnStream.Recv()
 		if err == io.EOF {
-			resp.Write([]byte("{}"))
+			writeJsonResp(resp, struct {}{})
 			return
 		} else if err != nil {
 			writeErrorResp(resp, 500, err.Error())
@@ -238,7 +246,7 @@ func (g *Grpc2HttpConverter) handleOpenChannel(resp http.ResponseWriter,
 		}
 	}
 
-	resp.Write([]byte("{}"))
+	writeJsonResp(resp, struct {}{})
 }
 
 func (g *Grpc2HttpConverter) handleListPeers(resp http.ResponseWriter,
@@ -254,7 +262,7 @@ func (g *Grpc2HttpConverter) handleListPeers(resp http.ResponseWriter,
 		return
 	}
 
-	json.NewEncoder(resp).Encode(lnResp)
+	writeJsonResp(resp, lnResp)
 }
 
 func (g *Grpc2HttpConverter) handleSendPayment(resp http.ResponseWriter,
@@ -309,7 +317,7 @@ func (g *Grpc2HttpConverter) handleSendPayment(resp http.ResponseWriter,
 	}
 
 	paymentStream.CloseSend()
-	json.NewEncoder(resp).Encode(lnResp)
+	writeJsonResp(resp, lnResp)
 }
 
 func getRoutingTable(ctxb context.Context, client lnrpc.LightningClient) (*rt.RoutingTable, error) {
@@ -344,7 +352,7 @@ func (g *Grpc2HttpConverter) handleGetRoutingTable(resp http.ResponseWriter,
 	}
 
 	jsonRT := rtToJSONForm(r)
-	json.NewEncoder(resp).Encode(jsonRT)
+	writeJsonResp(resp, jsonRT)
 }
 
 func rtToJSONForm(r *rt.RoutingTable) interface{} {
@@ -422,7 +430,7 @@ func (g *Grpc2HttpConverter) handleSendMultihopPayment(resp http.ResponseWriter,
 		writeErrorResp(resp, 500, err.Error())
 		return
 	}
-	json.NewEncoder(resp).Encode(lnResp)
+	writeJsonResp(resp, lnResp)
 }
 
 func validationStatusToStr(st lnwire.AllowHTLCStatus) string {
@@ -510,7 +518,7 @@ func (g *Grpc2HttpConverter) handleFindPath(resp http.ResponseWriter,
 		convResp.Paths[i].Path = convPath
 		convResp.Paths[i].ValidationStatus = validationStatusToStr(lnwire.AllowHTLCStatus(lnResp.Paths[i].ValidationStatus))
 	}
-	json.NewEncoder(resp).Encode(convResp)
+	writeJsonResp(resp, convResp)
 }
 
 func (g *Grpc2HttpConverter) handlePayMultihop(resp http.ResponseWriter,
@@ -600,6 +608,7 @@ func (g *Grpc2HttpConverter) handlePayMultihop(resp http.ResponseWriter,
 		}
 		log.Print("Payment send")
 	}
+	writeJsonResp(resp, struct {}{})
 	resp.Write([]byte("{}"))
 }
 
@@ -631,7 +640,7 @@ func (g *Grpc2HttpConverter) handleWalletBalance(resp http.ResponseWriter,
 		writeErrorResp(resp, 500, err.Error())
 		return
 	}
-	json.NewEncoder(resp).Encode(lnResp)
+	writeJsonResp(resp, lnResp)
 }
 
 
@@ -640,6 +649,7 @@ type notFoundHandler struct{}
 func (a notFoundHandler) ServeHTTP(resp http.ResponseWriter,
 	req *http.Request) {
 	log.Printf("Request to not existing path: %v", req.RequestURI)
+	resp.Header().Add("Access-Control-Allow-Origin", "*")
 	writeErrorResp(resp, 400, "Requested path not found")
 }
 
