@@ -643,6 +643,32 @@ func (g *Grpc2HttpConverter) handleWalletBalance(resp http.ResponseWriter,
 	writeJsonResp(resp, lnResp)
 }
 
+func (g *Grpc2HttpConverter) handleSendMany(resp http.ResponseWriter,
+	req *http.Request) {
+	var amountToAddr map[string]int64
+	// Expects input in form {"ExampleAddr": NumCoinsInSatoshis, "SecondAddr": NumCoins}
+	jsonMap, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		writeErrorResp(resp, 500, err.Error())
+		return
+	}
+	if err := json.Unmarshal([]byte(jsonMap), &amountToAddr); err != nil {
+		writeErrorResp(resp, 500, err.Error())
+		return
+	}
+
+	ctxb := context.Background()
+	client := getClient(g.grpcAdrress)
+
+	txid, err := client.SendMany(ctxb, &lnrpc.SendManyRequest{amountToAddr})
+	if err != nil {
+		writeErrorResp(resp, 500, err.Error())
+		return
+	}
+
+	writeJsonResp(resp, txid)
+}
+
 
 type notFoundHandler struct{}
 
@@ -667,6 +693,7 @@ func (g *Grpc2HttpConverter)RunServer(){
 	router.HandleFunc("/api/find_path", g.handleFindPath).Methods("POST")
 	router.HandleFunc("/api/pay_multihop", g.handlePayMultihop).Methods("POST")
 	router.HandleFunc("/api/wallet_balance", g.handleWalletBalance).Methods("POST")
+	router.HandleFunc("/api/send_many", g.handleSendMany).Methods("POST")
 	log.Fatal(http.ListenAndServe(g.httpAddress, router))
 }
 
