@@ -1,5 +1,5 @@
-hash: ca143be9f92073c572b8f00756c52a5e1b91cfea7058843b5c3c1d6e9cf0845b
-updated: 2016-09-16T13:53:59.347460392-04:00
+hash: 29c5012066a0cdaa81009e6912645375c480628cdac56e4cfbda144391ec17a1
+updated: 2016-10-05T07:40:07.821360415-04:00
 imports:
 - name: github.com/awalterschulze/gographviz
   version: cafbade2d58068c3992f12afe46742195c673d2b
@@ -58,6 +58,10 @@ imports:
   version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
   subpackages:
   - proto
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/mux
+  version: 757bef944d0f21880861c2dd9c871ca543023cba
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/roasbeef/btcd
@@ -82,7 +86,7 @@ imports:
   - txsort
   - base58
 - name: github.com/roasbeef/btcwallet
-  version: d7d402cc4135a53230ce068dcc51252c58a11a3d
+  version: 1fd2d6224698e14591d06f2a10b24e86494cc19f
   subpackages:
   - chain
   - waddrmgr
@@ -126,7 +130,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 0032a855ba5c8a3c8e0d71c2deef354b70af1584
+  version: b1a2821ca5a4fd6b6e48ddfbb7d6d7584d839d21
   subpackages:
   - grpclog
   - codes
