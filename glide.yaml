@@ -6,6 +6,7 @@ import:
   - routing
   - rt
   - rt/graph
+- package: github.com/gorilla/mux
 - package: github.com/boltdb/bolt
   version: ^1.2.1
 - package: github.com/btcsuite/btclog
