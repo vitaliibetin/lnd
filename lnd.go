@@ -221,15 +221,26 @@ func lndMain() error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	mux := proxy.NewServeMux()
+	swaggerPattern := proxy.MustPattern(proxy.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "swagger"}, ""))
+	// TODO(roasbeef): accept path to swagger file as command-line option
+	mux.Handle("GET", swaggerPattern, func(w http.ResponseWriter, r *http.Request, p map[string]string) {
+		http.ServeFile(w, r, loadedConfig.SwaggerPath)
+	})
 	proxyOpts := []grpc.DialOption{grpc.WithInsecure()}
 	err = lnrpc.RegisterLightningHandlerFromEndpoint(ctx, mux, grpcEndpoint,
 		proxyOpts)
 	if err != nil {
 		return err
 	}
+	allowCORS := func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request){
+			resp.Header().Set("Access-Control-Allow-Origin", "*")
+			h.ServeHTTP(resp, req)
+		})
+	}
 	go func() {
 		rpcsLog.Infof("gRPC proxy started")
-		http.ListenAndServe(":8080", mux)
+		http.ListenAndServe(loadedConfig.HTTPRPCAddr, allowCORS(mux))
 	}()
 
 	// Wait for shutdown signal from either a graceful server stop or from
