@@ -1,5 +1,5 @@
-hash: 2106ce14ff53c14d3d0d3d8f34e1cf01c01a79eef409ffe871cd5783b77939c8
-updated: 2016-11-17T09:10:26.649921943-05:00
+hash: 870ba39a352f4b899562166f9ecbf4485768b1b67fb288a28d9e57e4cda16b9f
+updated: 2016-11-18T03:17:23.766473837-05:00
 imports:
 - name: github.com/aead/chacha20
   version: 7e1038a97ad08a9a16cb88ed7a6778b366ba4d99
@@ -61,6 +61,8 @@ imports:
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
+- name: github.com/dgrijalva/jwt-go
+  version: 9ed569b5d1ac936e6494082958d63a6aa4fff99a
 - name: github.com/go-errors/errors
   version: a41850380601eeb43f4350f7d17c6bbd8944aaf8
 - name: github.com/golang/protobuf
