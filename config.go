@@ -32,6 +32,7 @@ const (
 	defaultMaxPendingChannels = 1
 	defaultHTTPRPCAddr        = ":8080"
 	defaultSwaggerPath        = "lnrpc/rpc.swagger.json"
+	defaultHTTPSecret         = ""
 )
 
 var (
@@ -69,6 +70,7 @@ type config struct {
 	RPCUser  string `short:"u" long:"rpcuser" description:"Username for RPC connections"`
 	RPCPass  string `short:"P" long:"rpcpass" default-mask:"-" description:"Password for RPC connections"`
 	HTTPRPCAddr string `long:"httprpcaddr" description:"Address for HTTP RPC server"`
+	HTTPSecret string  `long:"httpsecret" description:"Secret used for validation JWT tokens for HTTP RPC. If empty authotization is disabled."`
 	SwaggerPath string `long:"swagger" description:"Path to swagger description file."`
 
 	RPCCert            string `long:"rpccert" description:"File containing btcd's certificate file"`
@@ -103,6 +105,7 @@ func loadConfig() (*config, error) {
 		RPCPass:            defaultRPCPass,
 		RPCCert:            defaultRPCCertFile,
 		HTTPRPCAddr:        defaultHTTPRPCAddr,
+		HTTPSecret:         defaultHTTPSecret,
 		SwaggerPath:        defaultSwaggerPath,
 		SPVHostAdr:         defaultSPVHostAdr,
 		MaxPendingChannels: defaultMaxPendingChannels,
