@@ -30,6 +30,7 @@ const (
 	defaultMaxPendingChannels = 1
 	defaultHTTPRPCAddr        = ":8080"
 	defaultSwaggerPath        = "lnrpc/rpc.swagger.json"
+	defaultHTTPSecret         = ""
 )
 
 var (
@@ -85,6 +86,7 @@ type config struct {
 	Litecoin *chainConfig `group:"Litecoin" namespace:"litecoin"`
 	Bitcoin  *chainConfig `group:"Bitcoin" namespace:"bitcoin"`
 	HTTPRPCAddr string `long:"httprpcaddr" description:"Address for HTTP RPC server"`
+	HTTPSecret string  `long:"httpsecret" description:"Secret used for validation JWT tokens for HTTP RPC. If empty authotization is disabled."`
 	SwaggerPath string `long:"swagger" description:"Path to swagger description file."`
 }
 
@@ -105,6 +107,7 @@ func loadConfig() (*config, error) {
 		PeerPort:           defaultPeerPort,
 		RPCPort:            defaultRPCPort,
 		HTTPRPCAddr:        defaultHTTPRPCAddr,
+		HTTPSecret:         defaultHTTPSecret,
 		SwaggerPath:        defaultSwaggerPath,
 		MaxPendingChannels: defaultMaxPendingChannels,
 		Bitcoin: &chainConfig{
