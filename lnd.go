@@ -24,12 +24,66 @@ import (
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
 
 	"github.com/roasbeef/btcrpcclient"
+	"time"
+	"strings"
+	"github.com/dgrijalva/jwt-go"
 )
 
 var (
 	cfg             *config
 	shutdownChannel = make(chan struct{})
 )
+
+type respWriterHelper struct {
+	Code int
+	w http.ResponseWriter
+}
+
+func newRespWriterHelper(w http.ResponseWriter) *respWriterHelper {
+	return &respWriterHelper{
+		Code: 200,
+		w: w,
+	}
+}
+func (w *respWriterHelper) Header() http.Header { return w.w.Header()}
+func (w *respWriterHelper) Write(b []byte) (int, error) { return w.w.Write(b)}
+func (w *respWriterHelper) WriteHeader(c int) {
+	w.Code = c
+	w.w.WriteHeader(c)
+}
+
+func logMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		respWrap := newRespWriterHelper(resp)
+		start := time.Now()
+		h.ServeHTTP(respWrap, req)
+		duration := time.Since(start)
+		rpcsLog.Infof("HTTP %v %v - %v %v %v", req.Method, req.RequestURI, respWrap.Code, http.StatusText(respWrap.Code), duration)
+	})
+}
+
+func authMiddleware(h http.Handler, secret []byte) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		authStr := req.Header.Get("Authorization")
+		// Check that it has form Bearer <token>
+		split := strings.Split(authStr, " ")
+		if len(split) == 2 && split[0] == "Bearer" {
+			_, err := jwt.Parse(split[1], func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("Unsuported signature type")
+				}
+				return secret, nil
+			})
+			if err == nil {
+				h.ServeHTTP(resp, req)
+				return
+			}
+		}
+		// So some error occured
+		resp.WriteHeader(403)
+		resp.Write([]byte(`{"error": "Access Denied"}`))
+	})
+}
 
 // lndMain is the true entry point for lnd. This function is required since
 // defers created in the top-level scope of a main method aren't executed if
@@ -202,15 +256,22 @@ func lndMain() error {
 	if err != nil {
 		return err
 	}
-	allowCORS := func(h http.Handler) http.Handler {
+	allowCORSMiddleware := func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request){
 			resp.Header().Set("Access-Control-Allow-Origin", "*")
 			h.ServeHTTP(resp, req)
 		})
 	}
+	var handler http.Handler
+	if loadedConfig.HTTPSecret == "" {
+		handler = mux
+	} else {
+		handler = authMiddleware(mux, []byte(loadedConfig.HTTPSecret))
+	}
+	handler = logMiddleware(allowCORSMiddleware(handler))
 	go func() {
 		rpcsLog.Infof("gRPC proxy started")
-		http.ListenAndServe(loadedConfig.HTTPRPCAddr, allowCORS(mux))
+		http.ListenAndServe(loadedConfig.HTTPRPCAddr, handler)
 	}()
 
 	// Wait for shutdown signal from either a graceful server stop or from
