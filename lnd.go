@@ -288,8 +288,14 @@ func lndMain() error {
 	}
 	allowCORSMiddleware := func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request){
-			resp.Header().Set("Access-Control-Allow-Origin", "*")
-			h.ServeHTTP(resp, req)
+			if req.Method == "OPTIONS" {
+				resp.Header().Set("Access-Control-Allow-Origin", "*")
+				resp.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+				resp.Header().Set("Access-Control-Allow-Headers", "Authorization")
+			} else {
+				resp.Header().Set("Access-Control-Allow-Origin", "*")
+				h.ServeHTTP(resp, req)
+			}
 		})
 	}
 	var handler http.Handler
