@@ -103,7 +103,7 @@ service Lightning {
     }
     rpc LookupInvoice(PaymentHash) returns (Invoice) {
         option (google.api.http) = {
-            get: "/v1/invoices/{r_hash_str}"
+            get: "/v1/invoices_hash/{r_hash_str}"
         };
     }
     rpc SubscribeInvoices(InvoiceSubscription) returns (stream Invoice) {
