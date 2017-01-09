@@ -1,5 +1,5 @@
-hash: faa87f5b7fca5bd929174fa19119f484d9f8d8fbe132c41b5130b88e88498271
-updated: 2016-12-14T17:39:46.624821339-08:00
+hash: 5b5952a70a8e5024983a5019febf9040f3e518430d6dc39c2859c67fa8ab4a87
+updated: 2017-01-09T08:40:45.123648778-05:00
 imports:
 - name: github.com/aead/chacha20
   version: 7e1038a97ad08a9a16cb88ed7a6778b366ba4d99
@@ -11,10 +11,10 @@ imports:
   version: 609eb77bad9f92f83854891fba4a0d03f075f5aa
   subpackages:
   - ast
-  - parser
-  - token
   - errors
   - lexer
+  - parser
+  - token
 - name: github.com/boltdb/bolt
   version: 583e8937c61f1af6513608ccc75c97b6abdf4ff9
 - name: github.com/btcsuite/bolt
@@ -22,10 +22,10 @@ imports:
 - name: github.com/btcsuite/btcd
   version: 602232500e50bc3b7f1e3d606331ef14d6f3e1ef
   subpackages:
-  - connmgr
   - chaincfg
-  - wire
   - chaincfg/chainhash
+  - connmgr
+  - wire
 - name: github.com/btcsuite/btclog
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/fastsha256
@@ -39,13 +39,13 @@ imports:
 - name: github.com/btcsuite/golangcrypto
   version: 53f62d9b43e87a6c56975cf862af7edf33a8d0df
   subpackages:
-  - ripemd160
   - nacl/secretbox
+  - pbkdf2
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
   - scrypt
   - ssh/terminal
-  - poly1305
-  - salsa20/salsa
-  - pbkdf2
 - name: github.com/btcsuite/seelog
   version: ae8891d029dd3c269dcfd6f261ad23e761acd99f
 - name: github.com/btcsuite/websocket
@@ -58,21 +58,23 @@ imports:
   version: 346938d642f2ec3594ed81d874461961cd0faa76
   subpackages:
   - spew
+- name: github.com/dgrijalva/jwt-go
+  version: 9ed569b5d1ac936e6494082958d63a6aa4fff99a
 - name: github.com/go-errors/errors
   version: 8fa88b06e5974e97fbf9899a7f86a344bfd1f105
 - name: github.com/golang/protobuf
   version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
-  - proto
   - jsonpb
+  - proto
   - protoc-gen-go/descriptor
 - name: github.com/grpc-ecosystem/grpc-gateway
   version: a8f25bd1ab549f8b87afd48aa9181221e9d439bb
   subpackages:
   - runtime
+  - runtime/internal
   - third_party/googleapis/google/api
   - utilities
-  - runtime/internal
 - name: github.com/howeyc/gopass
   version: f5387c492211eb133053880d23dfae62aa14123d
 - name: github.com/lightningnetwork/lightning-onion
@@ -84,38 +86,39 @@ imports:
   - btcec
   - btcjson
   - chaincfg
+  - chaincfg/chainhash
+  - database
+  - rpctest
   - txscript
   - wire
-  - rpctest
-  - database
 - name: github.com/roasbeef/btcrpcclient
   version: 0a6d6f13e1df801c686292ed431e0db1c3256126
 - name: github.com/roasbeef/btcutil
   version: 94511fbe6c9bf8ecddb82ccfe8f326e45a4559b0
   subpackages:
+  - base58
   - bloom
   - coinset
   - hdkeychain
   - txsort
-  - base58
 - name: github.com/roasbeef/btcwallet
   version: e3a31a83163961cf972719746a7bba134775c26c
   subpackages:
   - chain
-  - waddrmgr
-  - wallet
-  - walletdb/bdb
-  - wallet/txrules
-  - walletdb
+  - internal/helpers
+  - internal/legacy/keystore
+  - internal/legacy/rename
+  - internal/prompt
   - internal/zero
   - snacl
-  - internal/prompt
-  - wallet/txauthor
-  - wtxmgr
-  - internal/legacy/keystore
-  - internal/helpers
+  - waddrmgr
+  - wallet
   - wallet/internal/txsizes
-  - internal/legacy/rename
+  - wallet/txauthor
+  - wallet/txrules
+  - walletdb
+  - walletdb/bdb
+  - wtxmgr
 - name: github.com/urfave/cli
   version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
 - name: golang.org/x/crypto
@@ -123,22 +126,22 @@ imports:
   subpackages:
   - hkdf
   - nacl/secretbox
-  - ripemd160
-  - scrypt
-  - poly1305
-  - salsa20/salsa
   - pbkdf2
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
+  - scrypt
   - ssh/terminal
 - name: golang.org/x/net
   version: cfae461cedfdcab6e261a26eb77db53695623303
   subpackages:
   - context
   - http2
-  - trace
   - http2/hpack
   - idna
-  - lex/httplex
   - internal/timeseries
+  - lex/httplex
+  - trace
 - name: golang.org/x/sys
   version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
@@ -146,14 +149,14 @@ imports:
 - name: google.golang.org/grpc
   version: 708a7f9f3283aa2d4f6132d287d78683babe55c8
   subpackages:
-  - grpclog
   - codes
-  - metadata
   - credentials
+  - grpclog
   - internal
+  - metadata
   - naming
+  - peer
   - stats
   - tap
   - transport
-  - peer
 testImports: []

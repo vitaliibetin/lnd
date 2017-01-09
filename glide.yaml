@@ -16,23 +16,26 @@ import:
   - proto
 - package: github.com/howeyc/gopass
 - package: github.com/roasbeef/btcd
+  version: baea7691cc3c59480703fe1a3fb5595c838c963c
   subpackages:
   - blockchain
   - btcec
   - btcjson
   - chaincfg
+  - chaincfg/chainhash
   - txscript
   - wire
 - package: github.com/roasbeef/btcrpcclient
-  version: master
+  version: 0a6d6f13e1df801c686292ed431e0db1c3256126
 - package: github.com/roasbeef/btcutil
+  version: 94511fbe6c9bf8ecddb82ccfe8f326e45a4559b0
   subpackages:
   - bloom
   - coinset
   - hdkeychain
   - txsort
 - package: github.com/roasbeef/btcwallet
-  version: master
+  version: e3a31a83163961cf972719746a7bba134775c26c
   subpackages:
   - chain
   - waddrmgr
@@ -52,11 +55,13 @@ import:
 - package: google.golang.org/grpc
   version: ^1.0.0
 - package: github.com/lightningnetwork/lightning-onion
-  version: master
+  version: f38a054899049d1f5bdb6550c17724060384161b
 - package: github.com/grpc-ecosystem/grpc-gateway
   version: ^1.1.0
 - package: github.com/aead/chacha20
 - package: github.com/go-errors/errors
 - package: github.com/btcsuite/btcd
+  version: 602232500e50bc3b7f1e3d606331ef14d6f3e1ef
   subpackages:
   - connmgr
+- package: github.com/dgrijalva/jwt-go
