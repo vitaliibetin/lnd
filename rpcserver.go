@@ -719,7 +719,11 @@ func (r *rpcServer) SendPaymentSync(ctx context.Context,
 	// Construct and HTLC packet which a payment route (if
 	// one is found) to the destination using a Sphinx
 	// onoin packet to encode the route.
-	htlcPkt, err := r.constructPaymentRoute([]byte(nextPayment.DestString),
+	dest, err := hex.DecodeString(nextPayment.DestString)
+	if err != nil {
+		return nil, err
+	}
+	htlcPkt, err := r.constructPaymentRoute(dest,
 		nextPayment.Amt, rHash)
 	if err != nil {
 		return nil, err
