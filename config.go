@@ -30,6 +30,9 @@ const (
 	defaultRPCPass            = "passwd"
 	defaultSPVHostAdr         = "localhost:18333"
 	defaultMaxPendingChannels = 1
+	defaultHTTPRPCAddr        = ":8080"
+	defaultSwaggerPath        = "lnrpc/rpc.swagger.json"
+	defaultHTTPSecret         = ""
 )
 
 var (
@@ -65,6 +68,10 @@ type config struct {
 	RPCHost            string `long:"btcdhost" description:"The btcd rpc listening address. If a port is omitted, then the default port for the selected chain parameters will be used."`
 	RPCUser            string `short:"u" long:"rpcuser" description:"Username for RPC connections"`
 	RPCPass            string `short:"P" long:"rpcpass" default-mask:"-" description:"Password for RPC connections"`
+	HTTPRPCAddr        string `long:"httprpcaddr" description:"Address for HTTP RPC server"`
+	HTTPSecret         string `long:"httpsecret" description:"Secret used for validation JWT tokens for HTTP RPC. If empty authotization is disabled."`
+	SwaggerPath        string `long:"swagger" description:"Path to swagger description file."`
+
 	RPCCert            string `long:"rpccert" description:"File containing btcd's certificate file"`
 	RawRPCCert         string `long:"rawrpccert" description:"The raw bytes of btcd's PEM-encoded certificate chain which will be used to authenticate the RPC connection."`
 	TestNet3           bool   `long:"testnet" description:"Use the test network"`
@@ -93,6 +100,9 @@ func loadConfig() (*config, error) {
 		RPCUser:            defaultRPCUser,
 		RPCPass:            defaultRPCPass,
 		RPCCert:            defaultRPCCertFile,
+		HTTPRPCAddr:        defaultHTTPRPCAddr,
+		HTTPSecret:         defaultHTTPSecret,
+		SwaggerPath:        defaultSwaggerPath,
 		MaxPendingChannels: defaultMaxPendingChannels,
 	}
 

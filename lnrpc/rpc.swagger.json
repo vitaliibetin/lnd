@@ -387,7 +387,7 @@
         ]
       }
     },
-    "/v1/invoices/{r_hash_str}": {
+    "/v1/invoices_hash/{r_hash_str}": {
       "get": {
         "operationId": "LookupInvoice",
         "responses": {

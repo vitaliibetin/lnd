@@ -957,7 +957,6 @@ func (r *rpcServer) SendPayment(paymentStream lnrpc.Lightning_SendPaymentServer)
 			} else {
 				copy(rHash[:], nextPayment.PaymentHash)
 			}
-
 			// We launch a new goroutine to execute the current
 			// payment so we can continue to serve requests while
 			// this payment is being dispatched.
@@ -987,7 +986,6 @@ func (r *rpcServer) SendPayment(paymentStream lnrpc.Lightning_SendPaymentServer)
 					errChan <- err
 					return
 				}
-
 				err = paymentStream.Send(&lnrpc.SendResponse{
 					PaymentPreimage: preImage[:],
 					PaymentRoute:    marshalRoute(route),
@@ -1024,7 +1022,6 @@ func (r *rpcServer) SendPaymentSync(ctx context.Context,
 		destPub = payReq.Destination
 		amt = payReq.Amount
 		rHash = payReq.PaymentHash
-
 		// Otherwise, the payment conditions have been manually
 		// specified in the proto.
 	} else {

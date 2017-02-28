@@ -21,6 +21,7 @@ import:
   - btcec
   - btcjson
   - chaincfg
+  - chaincfg/chainhash
   - txscript
   - wire
   - connmgr
@@ -62,3 +63,4 @@ import:
 - package: github.com/tv42/zbase32
 - package: github.com/awalterschulze/gographviz
   version: ^1.0.0
+- package: github.com/dgrijalva/jwt-go

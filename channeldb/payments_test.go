@@ -29,6 +29,7 @@ func makeFakePayment() *OutgoingPayment {
 	}
 
 	return &OutgoingPayment{
+
 		Invoice:        *fakeInvoice,
 		Fee:            101,
 		Path:           fakePath,
@@ -91,7 +92,6 @@ func makeRandomFakePayment() (*OutgoingPayment, error) {
 		TimeLockLength: uint32(rand.Intn(10000)),
 		PaymentHash:    rHash,
 	}
-
 	return fakePayment, nil
 }
 

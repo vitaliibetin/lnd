@@ -61,7 +61,6 @@ func (db *DB) AddPayment(payment *OutgoingPayment) error {
 		return err
 	}
 	paymentBytes := b.Bytes()
-
 	return db.Update(func(tx *bolt.Tx) error {
 		payments, err := tx.CreateBucketIfNotExists(paymentBucket)
 		if err != nil {
@@ -93,20 +92,17 @@ func (db *DB) FetchAllPayments() ([]*OutgoingPayment, error) {
 		if bucket == nil {
 			return ErrNoPaymentsCreated
 		}
-
 		return bucket.ForEach(func(k, v []byte) error {
 			// If the value is nil, then we ignore it as it may be
 			// a sub-bucket.
 			if v == nil {
 				return nil
 			}
-
 			r := bytes.NewReader(v)
 			payment, err := deserializeOutgoingPayment(r)
 			if err != nil {
 				return err
 			}
-
 			payments = append(payments, payment)
 			return nil
 		})
@@ -114,7 +110,6 @@ func (db *DB) FetchAllPayments() ([]*OutgoingPayment, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return payments, nil
 }
 
@@ -130,7 +125,6 @@ func (db *DB) DeleteAllPayments() error {
 		if err != nil {
 			return err
 		}
-
 		return nil
 	})
 }
