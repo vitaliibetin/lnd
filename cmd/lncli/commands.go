@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"github.com/awalterschulze/gographviz"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	// "github.com/golang/protobuf/jsonpb"
+	// "github.com/golang/protobuf/proto"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/roasbeef/btcd/chaincfg/chainhash"
 	"github.com/roasbeef/btcutil"
@@ -38,6 +38,7 @@ func printJson(resp interface{}) {
 	out.WriteTo(os.Stdout)
 }
 
+/*
 func printRespJson(resp proto.Message) {
 	jsonMarshaler := &jsonpb.Marshaler{
 		EmitDefaults: true,
@@ -52,6 +53,7 @@ func printRespJson(resp proto.Message) {
 
 	fmt.Println(jsonStr)
 }
+*/
 
 var NewAddressCommand = cli.Command{
 	Name:   "newaddress",
@@ -88,7 +90,7 @@ func newAddress(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(addr)
+	printJson(addr)
 	return nil
 }
 
@@ -124,7 +126,7 @@ func sendCoins(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(txid)
+	printJson(txid)
 	return nil
 }
 
@@ -153,7 +155,7 @@ func sendMany(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(txid)
+	printJson(txid)
 	return nil
 }
 
@@ -197,7 +199,7 @@ func connectPeer(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(lnid)
+	printJson(lnid)
 	return nil
 }
 
@@ -439,7 +441,7 @@ func listPeers(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(resp)
+	printJson(resp)
 	return nil
 }
 
@@ -470,7 +472,7 @@ func walletBalance(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(resp)
+	printJson(resp)
 	return nil
 }
 
@@ -491,7 +493,7 @@ func channelBalance(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(resp)
+	printJson(resp)
 	return nil
 }
 
@@ -512,7 +514,7 @@ func getInfo(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(resp)
+	printJson(resp)
 	return nil
 }
 
@@ -561,7 +563,7 @@ func pendingChannels(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(resp)
+	printJson(resp)
 
 	return nil
 }
@@ -592,7 +594,7 @@ func listChannels(ctx *cli.Context) error {
 
 	// TODO(roasbeef): defer close the client for the all
 
-	printRespJson(resp)
+	printJson(resp)
 
 	return nil
 }
@@ -785,7 +787,7 @@ func lookupInvoice(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(invoice)
+	printJson(invoice)
 
 	return nil
 }
@@ -822,7 +824,7 @@ func listInvoices(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(invoices)
+	printJson(invoices)
 
 	return nil
 }
@@ -858,7 +860,7 @@ func describeGraph(ctx *cli.Context) error {
 		return drawChannelGraph(graph)
 	}
 
-	printRespJson(graph)
+	printJson(graph)
 	return nil
 }
 
@@ -1028,7 +1030,7 @@ func listPayments(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(payments)
+	printJson(payments)
 	return nil
 }
 
@@ -1060,7 +1062,7 @@ func getChanInfo(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(chanInfo)
+	printJson(chanInfo)
 	return nil
 }
 
@@ -1093,7 +1095,7 @@ func getNodeInfo(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(nodeInfo)
+	printJson(nodeInfo)
 	return nil
 }
 
@@ -1130,7 +1132,7 @@ func queryRoute(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(route)
+	printJson(route)
 	return nil
 }
 
@@ -1154,7 +1156,7 @@ func getNetworkInfo(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(netInfo)
+	printJson(netInfo)
 	return nil
 }
 
@@ -1190,7 +1192,7 @@ func debugLevel(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(resp)
+	printJson(resp)
 	return nil
 }
 
@@ -1223,6 +1225,6 @@ func decodePayReq(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJson(resp)
+	printJson(resp)
 	return nil
 }
