@@ -25,6 +25,7 @@ import (
 	"github.com/roasbeef/btcd/txscript"
 	"github.com/roasbeef/btcd/wire"
 	"github.com/roasbeef/btcutil"
+	"context"
 )
 
 var (
@@ -1400,6 +1401,25 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 		case sphinx.ExitNode:
 			rHash := htlcPkt.PaymentHash
 			invoice, err := p.server.invoices.LookupInvoice(rHash)
+			if err != nil && p.server.invBridge != nil {
+				peerLog.Errorf("unable to settle HTLC using internal invoices, try to use external")
+				invoiceMsg, errM := p.server.invBridge.GetInvoice(rHash, time.Second)
+				if errM != nil {
+					peerLog.Tracef("Do not obtained external invoice: %v", errM)
+					err = errM
+				} else {
+					peerLog.Trace("Obtained external invoice")
+					ctxb := context.Background()
+					_, err = p.server.rpcServer.AddInvoice(ctxb, invoiceMsg)
+					if err != nil {
+						peerLog.Errorf("Cannot add externally obrained invoice: %v", err)
+					}
+					invoice, err = p.server.invoices.LookupInvoice(rHash)
+					if err != nil {
+						peerLog.Errorf("Can't find externally added invoice. It is an internal error.")
+					}
+				}
+			}
 			if err != nil {
 				// If we're the exit node, but don't recognize
 				// the payment hash, then we'll fail the HTLC

@@ -1763,3 +1763,54 @@ func (r *rpcServer) DecodePayReq(ctx context.Context,
 		NumSatoshis: int64(payReq.Amount),
 	}, nil
 }
+
+
+func (r *rpcServer) ConnectExternalInvoiceGenerator(stream lnrpc.Lightning_ConnectExternalInvoiceGeneratorServer) error {
+	// TODO: (protect with lock)
+	if r.server.invBridge != nil {
+		return fmt.Errorf("External invoice service is already connected")
+	}
+	r.server.invBridge = NewExternalInvocieBridge()
+	r.server.invBridge.StartMainLoop()
+
+	chExit := make(chan error, 2)
+	go func() {
+		for {
+			invoice, err := stream.Recv()
+			if err == io.EOF {
+				chExit <- nil
+				break
+			}
+			if err != nil {
+				chExit <- err
+				break
+			}
+			r.server.invBridge.ChInvoiceIn <- invoice
+		}
+	}()
+
+	go func() {
+		for {
+			rHash :=<- r.server.invBridge.ChRHashOut
+			paymentHash := & lnrpc.PaymentHash{
+				RHash: rHash[:],
+				RHashStr: hex.EncodeToString(rHash[:]),
+			}
+			err := stream.Send(paymentHash)
+			if err == io.EOF {
+				chExit <- nil
+				break
+			}
+			if err != nil {
+				chExit <- err
+				break
+			}
+		}
+	}()
+
+	defer func(){
+		r.server.invBridge.Stop()
+		r.server.invBridge = nil
+	}()
+	return <-chExit
+}

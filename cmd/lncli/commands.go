@@ -15,13 +15,14 @@ import (
 	"strings"
 
 	"github.com/awalterschulze/gographviz"
-	// "github.com/golang/protobuf/jsonpb"
-	// "github.com/golang/protobuf/proto"
+	 "github.com/golang/protobuf/jsonpb"
+	 "github.com/golang/protobuf/proto"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/roasbeef/btcd/chaincfg/chainhash"
 	"github.com/roasbeef/btcutil"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
+	"bufio"
 )
 
 // TODO(roasbeef): cli logic for supporting both positional and unix style
@@ -38,7 +39,7 @@ func printJson(resp interface{}) {
 	out.WriteTo(os.Stdout)
 }
 
-/*
+
 func printRespJson(resp proto.Message) {
 	jsonMarshaler := &jsonpb.Marshaler{
 		EmitDefaults: true,
@@ -53,7 +54,7 @@ func printRespJson(resp proto.Message) {
 
 	fmt.Println(jsonStr)
 }
-*/
+
 
 var NewAddressCommand = cli.Command{
 	Name:   "newaddress",
@@ -1228,3 +1229,64 @@ func decodePayReq(ctx *cli.Context) error {
 	printJson(resp)
 	return nil
 }
+
+var ConnectExternalInvoiceGenerator = cli.Command{
+	Name:        "invoicegenerator",
+	Usage:       "ivoicegenerator",
+	Description: "Print incoming rHash. Invoice can be inputed",
+	Action: connectExternalInvoiceGenerator,
+}
+
+func connectExternalInvoiceGenerator(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	stream, err := client.ConnectExternalInvoiceGenerator(ctxb)
+
+	if err != nil {
+		return err
+	}
+
+	chExit := make(chan error, 2)
+	go func(){
+		for{
+			paymentHash, err := stream.Recv()
+			if err == io.EOF {
+				chExit <- nil
+				break
+			}
+			if err != nil {
+				chExit <- err
+				break
+			}
+			printRespJson(paymentHash)
+		}
+	}()
+
+	go func() {
+		sc := bufio.NewScanner(os.Stdin)
+		for sc.Scan() {
+			inv := &lnrpc.Invoice{}
+			err := jsonpb.UnmarshalString(sc.Text(), inv)
+			if err != nil {
+				fmt.Fprint(os.Stderr, "Incorrect input: %v\n", err)
+				continue
+			}
+			err = stream.Send(inv)
+			if err == io.EOF{
+				chExit <- nil
+				return
+			}
+			if err != nil {
+				chExit <- err
+				return
+			}
+		}
+		chExit <-nil
+	}()
+
+	// Exiting will close channel
+	return <-chExit
+}
+
