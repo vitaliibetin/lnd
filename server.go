@@ -84,6 +84,9 @@ type server struct {
 	// only affect the protocol between these two nodes.
 	localFeatures *lnwire.FeatureVector
 
+	// invBridge is used to connect external services that generate invoices
+	invBridge *ExternalInvoiceBridge
+
 	wg   sync.WaitGroup
 	quit chan struct{}
 }
@@ -885,4 +888,100 @@ func (s *server) Peers() []*peer {
 	s.queries <- &listPeersMsg{resp}
 
 	return <-resp
+}
+
+type invoiceRequest struct {
+		rHash [32]byte
+		chInvoice chan *lnrpc.Invoice
+		chError chan error
+		timeout time.Duration
+}
+
+type ExternalInvoiceBridge struct {
+	ChRHashOut chan [32]byte
+	ChInvoiceIn chan *lnrpc.Invoice
+	pendingRequsts map[[32]byte] *[]*invoiceRequest
+	chInputRequests chan *invoiceRequest
+	chTimeout chan *[32]byte
+	chStop chan struct{}
+}
+
+func NewExternalInvocieBridge() *ExternalInvoiceBridge {
+	return &ExternalInvoiceBridge{
+		ChRHashOut: make(chan [32]byte, 10),
+		ChInvoiceIn: make(chan *lnrpc.Invoice, 10),
+		pendingRequsts: make(map[[32]byte] *[]*invoiceRequest),
+		chInputRequests: make(chan *invoiceRequest),
+		chTimeout: make(chan *[32]byte),
+		chStop: make(chan struct{}),
+
+	}
+}
+
+func (b *ExternalInvoiceBridge) GetInvoice(rHash [32]byte, timeout time.Duration) (*lnrpc.Invoice, error) {
+	req := &invoiceRequest{
+		rHash: rHash,
+		chInvoice: make(chan *lnrpc.Invoice, 1),
+		chError: make(chan error, 1),
+		timeout: timeout,
+	}
+	b.chInputRequests <- req
+	return <-req.chInvoice, <-req.chError
+}
+
+func (b *ExternalInvoiceBridge) StartMainLoop(){
+	go func(){
+		for {
+			select {
+			case inv :=<- b.ChInvoiceIn:
+				if len(inv.RPreimage) != 32 {
+					continue
+				}
+				rHash := fastsha256.Sum256(inv.RPreimage[:])
+				// (TODO) Maybe validate preimage ?
+				if pendingReqs, ok := b.pendingRequsts[rHash]; ok {
+					for _, req := range(*pendingReqs) {
+						req.chInvoice <- inv
+						req.chError <- nil
+					}
+					delete(b.pendingRequsts, rHash)
+				}
+			case rHash := <- b.chTimeout :
+				if pendingReqs, ok := b.pendingRequsts[*rHash]; ok {
+					for _, req := range(*pendingReqs) {
+						req.chInvoice <- nil
+						req.chError <- fmt.Errorf("Timeout")
+					}
+					delete(b.pendingRequsts, *rHash)
+				}
+			case req := <-b.chInputRequests :
+				if pendingReqs, ok := b.pendingRequsts[req.rHash]; ok {
+					*pendingReqs = append(*pendingReqs, req)
+				} else {
+					pendingReqs = & []*invoiceRequest {
+						req,
+					}
+					b.pendingRequsts[req.rHash] = pendingReqs
+					b.ChRHashOut <- req.rHash
+				}
+				go func(rHash [32]byte, timeout time.Duration){
+					<-time.After(timeout)
+					b.chTimeout <- &rHash
+				}(req.rHash, req.timeout)
+			case <-b.chStop:
+				for _, pendingReqs := range(b.pendingRequsts) {
+					for _, req := range(*pendingReqs) {
+						req.chInvoice <- nil
+						req.chError <- fmt.Errorf("External invoice bridge is stopping and invoice is still not obtained")
+					}
+				}
+				return
+
+			}
+		}
+	}()
+}
+
+func (b *ExternalInvoiceBridge) Stop(){
+	close(b.chStop)
 }

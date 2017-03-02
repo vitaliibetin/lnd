@@ -77,6 +77,7 @@ func main() {
 		GetNetworkInfoCommand,
 		DebugLevel,
 		DecodePayReq,
+		ConnectExternalInvoiceGenerator,
 	}
 
 	if err := app.Run(os.Args); err != nil {
