@@ -236,6 +236,14 @@ func assertNumChannelsPending(ctxt context.Context, t *harnessTest,
 	}
 }
 
+func testTopologyManager(net *networkHarness, t *harnessTest) {
+	manager := NewTopologyManager(net)
+
+	if err := manager.ApplyFromFile("config.json"); err != nil {
+		t.Fatalf("can't apply given configuration: %v", err)
+	}
+}
+
 // testBasicChannelFunding performs a test exercising expected behavior from a
 // basic funding workflow. The test creates a new channel between Alice and
 // Bob, then immediately closes the channel after asserting some expected post
@@ -2139,6 +2147,10 @@ type testCase struct {
 }
 
 var testsCases = []*testCase{
+	{
+		name: "topology manager",
+		test: testTopologyManager,
+	},
 	{
 		name: "basic funding flow",
 		test: testBasicChannelFunding,

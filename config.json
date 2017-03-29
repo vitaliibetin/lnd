@@ -1,0 +1,36 @@
+{
+	"wallet_balances": {
+		"lnd1": 100000,
+		"lnd2": 100000,
+		"lnd3": 100000
+	},
+	"channels": [
+		{
+			"name1": "lnd1",
+			"name2": "lnd2",
+			"capacity": 20000,
+			"push_amt": 500
+		},
+		{
+			"name1": "lnd2",
+			"name2": "lnd3",
+			"capacity": 20000,
+			"push_amt": 500
+		}
+	],
+	"connections": [
+		{
+			"name1": "lnd1",
+			"name2": "lnd2"
+		},
+		{
+
+			"name1": "lnd2",
+			"name2": "lnd1"
+		},
+		{
+			"name1": "lnd1",
+			"name2": "lnd3"
+		}
+	]
+}
