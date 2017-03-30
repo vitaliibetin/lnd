@@ -108,7 +108,7 @@ service Lightning {
     }
     rpc SubscribeInvoices(InvoiceSubscription) returns (stream Invoice) {
         option (google.api.http) = {
-            get: "/v1/invoices/subscribe"
+            get: "/v1/invoices_subscribe"
         };
     }
     rpc DecodePayReq(PayReqString) returns (PayReq) {

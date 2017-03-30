@@ -346,22 +346,6 @@
         ]
       }
     },
-    "/v1/invoices/subscribe": {
-      "get": {
-        "operationId": "SubscribeInvoices",
-        "responses": {
-          "200": {
-            "description": "(streaming responses)",
-            "schema": {
-              "$ref": "#/definitions/lnrpcInvoice"
-            }
-          }
-        },
-        "tags": [
-          "Lightning"
-        ]
-      }
-    },
     "/v1/invoices/{pending_only}": {
       "get": {
         "operationId": "ListInvoices",
@@ -413,6 +397,22 @@
             "format": "byte"
           }
         ],
+        "tags": [
+          "Lightning"
+        ]
+      }
+    },
+    "/v1/invoices_subscribe": {
+      "get": {
+        "operationId": "SubscribeInvoices",
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/lnrpcInvoice"
+            }
+          }
+        },
         "tags": [
           "Lightning"
         ]
