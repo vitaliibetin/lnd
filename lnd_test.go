@@ -29,6 +29,7 @@ import (
 	"github.com/roasbeef/btcutil"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"github.com/golang/protobuf/jsonpb"
 )
 
 // harnessTest wraps a regular testing.T providing enhanced error detection
@@ -242,6 +243,53 @@ func testTopologyManager(net *networkHarness, t *harnessTest) {
 	if err := manager.ApplyFromFile("config.json"); err != nil {
 		t.Fatalf("can't apply given configuration: %v", err)
 	}
+	node1 := manager.nameToLnd["lnd1"]
+	node2 := manager.nameToLnd["lnd2"]
+	fmt.Println("Node1 pubkey", node1.PubKey)
+	fmt.Println("Node2 pubkey", node2.PubKey)
+	net.Miner.Node.Generate(10)
+	time.Sleep(1*time.Second)
+	ctxb := context.Background()
+	balanceReq := &lnrpc.WalletBalanceRequest{}
+	balanceResp, err := node1.WalletBalance(ctxb, balanceReq)
+	if err != nil {
+		t.Fatalf("Cannot get balance of a node")
+	}
+	fmt.Printf("Balance of node1 is %v\n", balanceResp.Balance)
+
+	channelBalanceRequest := &lnrpc.ChannelBalanceRequest{}
+	channelBalanceResponse, err := node1.ChannelBalance(ctxb, channelBalanceRequest)
+	fmt.Println("Channel balance response for node1", channelBalanceResponse)
+
+	inv := &lnrpc.Invoice{
+		Value: 10,
+	}
+	invResp, err := node2.AddInvoice(ctxb, inv)
+	fmt.Println("Invoice response is", invResp, "err is", err)
+
+	// Sending payment
+	payClient, err := node1.SendPayment(ctxb)
+	if err != nil {
+		t.Fatalf("Cannot create payment client")
+	}
+	sendReq := &lnrpc.SendRequest{
+		Dest: node2.PubKey[:],
+		PaymentHash: invResp.RHash,
+		Amt: 9,
+	}
+	err = payClient.Send(sendReq)
+	if err != nil {
+		t.Fatalf("Cannot send payment")
+	}
+	sendResp, err := payClient.Recv()
+	if err != nil {
+		t.Fatalf("Cannot receive payment response %v", err)
+	}
+	fmt.Println("Payment response", sendResp)
+	// Check balance
+	channelBalanceResponse, err = node1.ChannelBalance(ctxb, channelBalanceRequest)
+	fmt.Println("Channel balance response for node1", channelBalanceResponse)
+
 }
 
 // testBasicChannelFunding performs a test exercising expected behavior from a
@@ -2151,70 +2199,71 @@ var testsCases = []*testCase{
 		name: "topology manager",
 		test: testTopologyManager,
 	},
-	{
-		name: "basic funding flow",
-		test: testBasicChannelFunding,
-	},
-	{
-		name: "graph topology notifications",
-		test: testGraphTopologyNotifications,
-	},
-	{
-		name: "funding flow persistence",
-		test: testChannelFundingPersistence,
-	},
-	{
-		name: "channel force closure",
-		test: testChannelForceClosure,
-	},
-	{
-		name: "channel balance",
-		test: testChannelBalance,
-	},
-	{
-		name: "single hop invoice",
-		test: testSingleHopInvoice,
-	},
-	{
-		name: "list outgoing payments",
-		test: testListPayments,
-	},
-	{
-		name: "max pending channel",
-		test: testMaxPendingChannels,
-	},
-	{
-		name: "multi-hop payments",
-		test: testMultiHopPayments,
-	},
-	{
-		name: "multiple channel creation",
-		test: testBasicChannelCreation,
-	},
-	{
-		name: "invoice update subscription",
-		test: testInvoiceSubscriptions,
-	},
-	{
-		name: "multi-hop htlc error propagation",
-		test: testHtlcErrorPropagation,
-	},
-	// TODO(roasbeef): multi-path integration test
-	{
-		name: "node announcement",
-		test: testNodeAnnouncement,
-	},
-	{
-		// TODO(roasbeef): test always needs to be last as Bob's state
-		// is borked since we trick him into attempting to cheat Alice?
-		name: "revoked uncooperative close retribution",
-		test: testRevokedCloseRetribution,
-	},
+	//{
+	//	name: "basic funding flow",
+	//	test: testBasicChannelFunding,
+	//},
+	//{
+	//	name: "graph topology notifications",
+	//	test: testGraphTopologyNotifications,
+	//},
+	//{
+	//	name: "funding flow persistence",
+	//	test: testChannelFundingPersistence,
+	//},
+	//{
+	//	name: "channel force closure",
+	//	test: testChannelForceClosure,
+	//},
+	//{
+	//	name: "channel balance",
+	//	test: testChannelBalance,
+	//},
+	//{
+	//	name: "single hop invoice",
+	//	test: testSingleHopInvoice,
+	//},
+	//{
+	//	name: "list outgoing payments",
+	//	test: testListPayments,
+	//},
+	//{
+	//	name: "max pending channel",
+	//	test: testMaxPendingChannels,
+	//},
+	//{
+	//	name: "multi-hop payments",
+	//	test: testMultiHopPayments,
+	//},
+	//{
+	//	name: "multiple channel creation",
+	//	test: testBasicChannelCreation,
+	//},
+	//{
+	//	name: "invoice update subscription",
+	//	test: testInvoiceSubscriptions,
+	//},
+	//{
+	//	name: "multi-hop htlc error propagation",
+	//	test: testHtlcErrorPropagation,
+	//},
+	//// TODO(roasbeef): multi-path integration test
+	//{
+	//	name: "node announcement",
+	//	test: testNodeAnnouncement,
+	//},
+	//{
+	//	// TODO(roasbeef): test always needs to be last as Bob's state
+	//	// is borked since we trick him into attempting to cheat Alice?
+	//	name: "revoked uncooperative close retribution",
+	//	test: testRevokedCloseRetribution,
+	//},
 }
 
 // TestLightningNetworkDaemon performs a series of integration tests amongst a
 // programmatically driven network of lnd nodes.
 func TestLightningNetworkDaemon(t *testing.T) {
+	fmt.Println("Running TestLightningNetworkDaemon")
 	ht := newHarnessTest(t)
 
 	// First create the network harness to gain access to its
@@ -2288,4 +2337,280 @@ func TestLightningNetworkDaemon(t *testing.T) {
 	}
 
 	close(testsFin)
+}
+
+
+func BenchmarkLightningNetworkDaemon(b *testing.B) {
+	// First create the network harness to gain access to its
+	// 'OnTxAccepted' call back.
+	fmt.Println("Running benchmark")
+	lndHarness, err := newNetworkHarness()
+	if err != nil {
+		b.Fatalf("unable to create lightning network harness: %v", err)
+	}
+	defer lndHarness.TearDownAll()
+
+	handlers := &btcrpcclient.NotificationHandlers{
+		OnTxAccepted: lndHarness.OnTxAccepted,
+	}
+
+	// Spawn a new goroutine to watch for any fatal errors that any of the
+	// running lnd processes encounter. If an error occurs, then the test
+	// fails immediately with a fatal error, as far as fatal is happening
+	// inside goroutine main goroutine would not be finished at the same
+	// time as we receive fatal error from lnd process.
+	testsFin := make(chan struct{})
+	go func() {
+		select {
+		case err := <-lndHarness.ProcessErrors():
+			b.Fatalf("lnd finished with error (stderr): "+
+				"\n%v", err)
+		case <-testsFin:
+			return
+		}
+	}()
+
+	// First create an instance of the btcd's rpctest.Harness. This will be
+	// used to fund the wallets of the nodes within the test network and to
+	// drive blockchain related events within the network. Revert the default
+	// setting of accepting non-standard transactions on simnet to reject them.
+	// Transactions on the lightning network should always be standard to get
+	// better guarantees of getting included in to blocks.
+	args := []string{"--rejectnonstd"}
+	btcdHarness, err := rpctest.New(harnessNetParams, handlers, args)
+	if err != nil {
+		b.Fatalf("unable to create mining node: %v", err)
+	}
+	defer btcdHarness.TearDown()
+	if err := btcdHarness.SetUp(true, 50); err != nil {
+		b.Fatalf("unable to set up mining node: %v", err)
+	}
+	if err := btcdHarness.Node.NotifyNewTransactions(false); err != nil {
+		b.Fatalf("unable to request transaction notifications: %v", err)
+	}
+
+	// Next mine enough blocks in order for segwit and the CSV package
+	// soft-fork to activate on SimNet.
+	numBlocks := chaincfg.SimNetParams.MinerConfirmationWindow * 2
+	if _, err := btcdHarness.Node.Generate(numBlocks); err != nil {
+		b.Fatalf("unable to generate blocks: %v", err)
+	}
+
+	// With the btcd harness created, we can now complete the
+	// initialization of the network. args - list of lnd arguments,
+	// example: "--debuglevel=debug"
+	// TODO(roasbeef): create master balanced channel with all the monies?
+	if err := lndHarness.InitializeSeedNodes(btcdHarness, nil); err != nil {
+		b.Fatalf("unable to initialize seed nodes: %v", err)
+	}
+	if err = lndHarness.SetUp(); err != nil {
+		b.Fatalf("unable to set up test lightning network: %v", err)
+	}
+	net := lndHarness
+	manager := NewTopologyManager(lndHarness)
+	if err := manager.ApplyFromFile("config.json"); err != nil {
+		b.Fatalf("can't apply given configuration: %v", err)
+	}
+	node1 := manager.nameToLnd["lnd1"]
+	node2 := manager.nameToLnd["lnd2"]
+	fmt.Println("Node1 pubkey", node1.PubKey)
+	fmt.Println("Node2 pubkey", node2.PubKey)
+	// Need to wait some time until wallet funds appear again
+	// They are locked by opening channels
+	net.Miner.Node.Generate(10)
+	time.Sleep(1*time.Second)
+	ctxb := context.Background()
+
+	// TODO: maybe wait until all confirmations is done
+	b.Run("Add invoice", func(b *testing.B){
+		for i:=0; i<b.N; i++ {
+			inv := &lnrpc.Invoice{
+				Value: 1,
+			}
+			_, err := node2.AddInvoice(ctxb, inv)
+			if err != nil {
+				b.Fatalf("Cannot add invoice: %v", err)
+			}
+		}
+	})
+	b.Run("Get info", func(b *testing.B) {
+		ctxb := context.Background()
+		for i:=0; i<b.N; i++ {
+			infoReq := &lnrpc.GetInfoRequest{}
+			_, err := node1.GetInfo(ctxb, infoReq)
+			if err != nil {
+				b.Fatalf("Cannot get info: %v", err)
+			}
+		}
+	})
+	b.Run("New witness address", func(b *testing.B){
+		ctxb := context.Background()
+		for i:=0; i<b.N; i++ {
+			newReq := &lnrpc.NewWitnessAddressRequest{}
+			_, err := node1.NewWitnessAddress(ctxb, newReq)
+			if err != nil {
+				b.Fatalf("Cannot create new witness address: %v", err)
+			}
+		}
+	})
+
+	for _, l := range([]int{2, 4, 8}) {
+		fmt.Println("Running for l=", l)
+		manager := NewTopologyManager(lndHarness)
+		topologyConfig, nodeNames, err := createLinearTopologyConfig(l)
+		fmt.Println("topologyConfig=", topologyConfig)
+		if err != nil {
+			b.Fatalf("Cannot create topology config: %v", err)
+		}
+		err = manager.ConfigureAndVerify(topologyConfig)
+		if err != nil {
+			b.Fatalf("Cannot apply topology config: %v", err)
+		}
+		node1 := manager.nameToLnd[nodeNames[0]]
+		node2 := manager.nameToLnd[nodeNames[l-1]]
+		fmt.Println("nodeNames=", nodeNames)
+		net.Miner.Node.Generate(10)
+		time.Sleep(time.Duration(l)*time.Second)
+		ctxb := context.Background()
+
+		graphReq := &lnrpc.ChannelGraphRequest{}
+		graphResp, err := node1.DescribeGraph(ctxb, graphReq)
+		if err != nil {
+			b.Fatalf("Error calling DescribeGraph: %v", err)
+		}
+		m := jsonpb.Marshaler{
+			Indent: "  ",
+		}
+		mStr, err := m.MarshalToString(graphResp)
+		if err != nil {
+			b.Fatalf("Error marshalling json resp: %v", err)
+		}
+		fmt.Println("graphResp=", mStr)
+
+		inv := &lnrpc.Invoice{
+			Value: 1,
+		}
+		invResp, err := node2.AddInvoice(ctxb, inv)
+		if err != nil {
+			b.Fatalf("Cannot add invoice: %v", err)
+		}
+
+		b.Run(fmt.Sprintf("L=%v. Sync mode", l), func (b *testing.B) {
+			// Sending payments
+			// We use the same RHASH currently
+			payClient, err := node1.SendPayment(ctxb)
+			if err != nil {
+				b.Fatalf("Cannot create payment client: %v", err)
+			}
+			for i:=0; i<b.N; i++ {
+				sendReq := &lnrpc.SendRequest{
+					Dest: node2.PubKey[:],
+					PaymentHash: invResp.RHash,
+					Amt: 1,
+				}
+				err = payClient.Send(sendReq)
+				if err != nil {
+					b.Fatalf("Cannot send payment: %v", err)
+				}
+
+				_, err = payClient.Recv()
+				if err != nil {
+					b.Fatalf("Cannot receive payment response %v", err)
+				}
+			}
+		})
+		if l>2 {
+			continue
+		}
+		b.Run(fmt.Sprintf("L=%v. Async mode", l), func (b *testing.B) {
+			// Sending payments
+			// We use the same RHASH currently
+			payClient, err := node1.SendPayment(ctxb)
+			if err != nil {
+				b.Fatalf("Cannot create payment client: %v", err)
+			}
+			for i:=0; i<b.N; i++ {
+				sendReq := &lnrpc.SendRequest{
+					Dest: node2.PubKey[:],
+					PaymentHash: invResp.RHash,
+					Amt: 10,
+				}
+				err = payClient.Send(sendReq)
+				if err != nil {
+					b.Fatalf("Cannot send payment: %v", err)
+				}
+			}
+			for i:=0; i<b.N; i++ {
+				_, err = payClient.Recv()
+				if err != nil {
+					b.Fatalf("Cannot receive payment response %v", err)
+				}
+			}
+		})
+		b.Run(fmt.Sprintf("L=%v. No confirm mode", l), func (b *testing.B) {
+			// Sending payments
+			// We use the same RHASH currently
+			payClient, err := node1.SendPayment(ctxb)
+			if err != nil {
+				b.Fatalf("Cannot create payment client: %v", err)
+			}
+			// There should be enough money in channel to send b.N payments
+			for i:=0; i<b.N; i++ {
+				sendReq := &lnrpc.SendRequest{
+					Dest: node2.PubKey[:],
+					PaymentHash: invResp.RHash,
+					Amt: 1,
+				}
+				err = payClient.Send(sendReq)
+				if err != nil {
+					b.Fatalf("Cannot send payment: %v i=%v", err,i)
+				}
+			}
+		})
+		// TODO: maybe stop/delete unneded lnd
+		// Wait some time until all "no confirm mode" transactions finish
+		time.Sleep(time.Second)
+	}
+	close(testsFin)
+}
+
+// Create linear topology with n nodes
+// 0-1-2-...-(n-1)
+func createLinearTopologyConfig(n int) (*TopologyConfig, []string, error) {
+	// How much send to node initially
+	startAmount := btcutil.Amount(100000000)
+	// Channel capacity. It should be sufficiently large number
+	// It should be enough for at least 20000 payments
+	chanCapacity := btcutil.Amount(10000000)
+
+	pushAmt := chanCapacity / 2
+
+	if n < 2 {
+		return nil, nil, fmt.Errorf("Linear topology should have at least 2 nodes. Got %v", n)
+	}
+	nodeNames := make([]string, n)
+	for i:=0; i<n; i++ {
+		nodeNames[i] = fmt.Sprintf("%v", i)
+	}
+
+	nodeBalances := make(map[string]btcutil.Amount)
+	for i:=0; i<n; i++ {
+		nodeBalances[nodeNames[i]] = startAmount
+	}
+
+	channels := make([]Channel, n-1)
+	for i:=0; i<n-1; i++ {
+		channels[i] = Channel {
+			Name1: nodeNames[i],
+			Name2: nodeNames[i+1],
+			Capacity: chanCapacity,
+			PushAmt: pushAmt,
+		}
+	}
+
+	config := &TopologyConfig{
+		WalletBalances: nodeBalances,
+		Channels: channels,
+	}
+	return config, nodeNames, nil
 }
