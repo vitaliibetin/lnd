@@ -20,12 +20,12 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwire"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/connmgr"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/connmgr"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 var (
@@ -852,9 +852,7 @@ func (p *peer) handleLocalClose(req *closeLinkReq) {
 		err         error
 		closingTxid *chainhash.Hash
 	)
-
 	chanID := lnwire.NewChanIDFromOutPoint(req.chanPoint)
-
 	p.activeChanMtx.RLock()
 	channel := p.activeChannels[chanID]
 	p.activeChanMtx.RUnlock()
@@ -934,8 +932,7 @@ func (p *peer) handleLocalClose(req *closeLinkReq) {
 	// confirmation.
 	notifier := p.server.chainNotifier
 	go waitForChanToClose(uint32(bestHeight), notifier, req.err,
-		req.chanPoint, closingTxid, func() {
-
+		req.chanPoint, closingTxid, func(detail *chainntnfs.SpendDetail) {
 			// First, we'll mark the database as being fully closed
 			// so we'll no longer watch for its ultimate closure
 			// upon startup.
@@ -950,7 +947,7 @@ func (p *peer) handleLocalClose(req *closeLinkReq) {
 			req.updates <- &lnrpc.CloseStatusUpdate{
 				Update: &lnrpc.CloseStatusUpdate_ChanClose{
 					ChanClose: &lnrpc.ChannelCloseUpdate{
-						ClosingTxid: closingTxid[:],
+						ClosingTxid: detail.SpenderTxHash.CloneBytes(),
 						Success:     true,
 					},
 				},
@@ -977,6 +974,7 @@ func (p *peer) handleRemoteClose(req *lnwire.CloseRequest) {
 	sig := req.RequesterCloseSig
 	closeSig := append(sig.Serialize(), byte(txscript.SigHashAll))
 	closeTx, err := channel.CompleteCooperativeClose(closeSig)
+
 	if err != nil {
 		peerLog.Errorf("unable to complete cooperative "+
 			"close for ChannelPoint(%v): %v",
@@ -1001,6 +999,7 @@ func (p *peer) handleRemoteClose(req *lnwire.CloseRequest) {
 
 	// Finally, broadcast the closure transaction, to the network.
 	err = p.server.lnwallet.PublishTransaction(closeTx)
+
 	if err != nil && !strings.Contains(err.Error(), "already have") {
 		peerLog.Errorf("channel close tx from "+
 			"ChannelPoint(%v) rejected: %v",
@@ -1043,7 +1042,7 @@ func (p *peer) handleRemoteClose(req *lnwire.CloseRequest) {
 	// such within the database (once it's confirmed").
 	notifier := p.server.chainNotifier
 	go waitForChanToClose(uint32(bestHeight), notifier, nil, chanPoint,
-		&closeTxid, func() {
+		&closeTxid, func(detail *chainntnfs.SpendDetail) {
 			// Now that the closing transaction has been confirmed,
 			// we'll mark the database as being fully closed so now
 			// that we no longer watch for its ultimate closure
@@ -1064,11 +1063,14 @@ func (p *peer) handleRemoteClose(req *lnwire.CloseRequest) {
 // the function, then it will be sent over the errChan.
 func waitForChanToClose(bestHeight uint32, notifier chainntnfs.ChainNotifier,
 	errChan chan error, chanPoint *wire.OutPoint,
-	closingTxID *chainhash.Hash, cb func()) {
+	closingTxID *chainhash.Hash, cb func(detail *chainntnfs.SpendDetail)) {
 
+	// INFO(mkl): it seems this method is responsible for determining if channel is actually closed
+	// It simply waits until given tx appear on blockchain
+	// NOSEG(mkl): since tx hash depends on signature we check if output was spent
 	// TODO(roasbeef): add param for num needed confs
-	confNtfn, err := notifier.RegisterConfirmationsNtfn(closingTxID, 1,
-		bestHeight)
+	confNtfn, err := notifier.RegisterSpendNtfn(chanPoint, 0)
+
 	if err != nil {
 		if errChan != nil {
 			errChan <- err
@@ -1076,9 +1078,12 @@ func waitForChanToClose(bestHeight uint32, notifier chainntnfs.ChainNotifier,
 		return
 	}
 
-	// In the case that the ChainNotifier is shutting down, all subscriber
-	// notification channels will be closed, generating a nil receive.
-	height, ok := <-confNtfn.Confirmed
+	 //In the case that the ChainNotifier is shutting down, all subscriber
+	 //notification channels will be closed, generating a nil receive.
+	 //INFO(mkl): reading from channels fails. Somehow this channel is closed
+
+	spentInfo, ok := <-confNtfn.Spend
+
 	if !ok {
 		return
 	}
@@ -1086,11 +1091,13 @@ func waitForChanToClose(bestHeight uint32, notifier chainntnfs.ChainNotifier,
 	// The channel has been closed, remove it from any active indexes, and
 	// the database state.
 	srvrLog.Infof("ChannelPoint(%v) is now closed at "+
-		"height %v", chanPoint, height.BlockHeight)
+		"height %v", chanPoint, spentInfo.SpendingHeight)
 
-	// Finally, execute the closure call back to mark the confirmation of
-	// the transaction closing the contract.
-	cb()
+	 //Finally, execute the closure call back to mark the confirmation of
+	 //the transaction closing the contract.
+	cb(spentInfo)
+
+	// TODO(mkl): we need to check if it was the correct transaction
 }
 
 // wipeChannel removes the passed channel from all indexes associated with the

@@ -5,13 +5,13 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/lightningnetwork/lnd/lnwallet"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
-	"github.com/roasbeef/btcwallet/waddrmgr"
-	base "github.com/roasbeef/btcwallet/wallet"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcwallet/waddrmgr"
+	base "github.com/btcsuite/btcwallet/wallet"
 )
 
 // FetchInputInfo queries for the WalletController's knowledge of the passed
@@ -82,7 +82,7 @@ func (b *BtcWallet) fetchOutputAddr(script []byte) (waddrmgr.ManagedAddress, err
 // script, then attempt to match keys one by one
 func (b *BtcWallet) fetchPrivKey(pub *btcec.PublicKey) (*btcec.PrivateKey, error) {
 	hash160 := btcutil.Hash160(pub.SerializeCompressed())
-	addr, err := btcutil.NewAddressWitnessPubKeyHash(hash160, b.netParams)
+	addr, err := btcutil.NewAddressPubKeyHash(hash160, b.netParams)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (b *BtcWallet) fetchPrivKey(pub *btcec.PublicKey) (*btcec.PrivateKey, error
 //
 // This is a part of the WalletController interface.
 func (b *BtcWallet) SignOutputRaw(tx *wire.MsgTx, signDesc *lnwallet.SignDescriptor) ([]byte, error) {
-	witnessScript := signDesc.WitnessScript
+	witnessScript := signDesc.P2SHScript
 
 	// First attempt to fetch the private key which corresponds to the
 	// specified public key.
@@ -111,9 +111,8 @@ func (b *BtcWallet) SignOutputRaw(tx *wire.MsgTx, signDesc *lnwallet.SignDescrip
 			signDesc.PrivateTweak)
 	}
 
-	amt := signDesc.Output.Value
-	sig, err := txscript.RawTxInWitnessSignature(tx, signDesc.SigHashes,
-		signDesc.InputIndex, amt, witnessScript, txscript.SigHashAll,
+	sig, err := txscript.RawTxInSignature(tx,
+		signDesc.InputIndex, witnessScript, txscript.SigHashAll,
 		privKey)
 	if err != nil {
 		return nil, err
@@ -125,13 +124,12 @@ func (b *BtcWallet) SignOutputRaw(tx *wire.MsgTx, signDesc *lnwallet.SignDescrip
 
 // ComputeInputScript generates a complete InputIndex for the passed
 // transaction with the signature as defined within the passed SignDescriptor.
-// This method is capable of generating the proper input script for both
-// regular p2wkh output and p2wkh outputs nested within a regular p2sh output.
+// This method is capable of generating the proper input script for p2pkh output
 //
 // This is a part of the WalletController interface.
 func (b *BtcWallet) ComputeInputScript(tx *wire.MsgTx,
 	signDesc *lnwallet.SignDescriptor) (*lnwallet.InputScript, error) {
-
+	// TODO(mkl): actually check if this is correct for NOSEGWIT
 	outputScript := signDesc.Output.PkScript
 	walletAddr, err := b.fetchOutputAddr(outputScript)
 	if err != nil {
@@ -144,58 +142,18 @@ func (b *BtcWallet) ComputeInputScript(tx *wire.MsgTx,
 		return nil, err
 	}
 
-	var witnessProgram []byte
 	inputScript := &lnwallet.InputScript{}
-
-	// If we're spending p2wkh output nested within a p2sh output, then
-	// we'll need to attach a sigScript in addition to witness data.
-	switch {
-	case pka.IsNestedWitness():
-		pubKey := privKey.PubKey()
-		pubKeyHash := btcutil.Hash160(pubKey.SerializeCompressed())
-
-		// Next, we'll generate a valid sigScript that'll allow us to
-		// spend the p2sh output. The sigScript will contain only a
-		// single push of the p2wkh witness program corresponding to
-		// the matching public key of this address.
-		p2wkhAddr, err := btcutil.NewAddressWitnessPubKeyHash(pubKeyHash,
-			b.netParams)
-		if err != nil {
-			return nil, err
-		}
-		witnessProgram, err = txscript.PayToAddrScript(p2wkhAddr)
-		if err != nil {
-			return nil, err
-		}
-
-		bldr := txscript.NewScriptBuilder()
-		bldr.AddData(witnessProgram)
-		sigScript, err := bldr.Script()
-		if err != nil {
-			return nil, err
-		}
-
-		inputScript.ScriptSig = sigScript
-	// Otherwise, this is a regular p2wkh output, so we include the
-	// witness program itself as the subscript to generate the proper
-	// sighash digest. As part of the new sighash digest algorithm, the
-	// p2wkh witness program will be expanded into a regular p2kh
-	// script.
-	default:
-		witnessProgram = outputScript
-	}
-
+	// TODO(mkl): check for other script types
 	// Generate a valid witness stack for the input.
 	// TODO(roasbeef): adhere to passed HashType
-	witnessScript, err := txscript.WitnessScript(tx, signDesc.SigHashes,
-		signDesc.InputIndex, signDesc.Output.Value, witnessProgram,
+	unlockScript, err := txscript.SignatureScript(tx,
+		signDesc.InputIndex, outputScript,
 		txscript.SigHashAll, privKey, true)
 	if err != nil {
 		return nil, err
 	}
 
-	inputScript.Witness = witnessScript
-
+	inputScript.ScriptSig = unlockScript
 	return inputScript, nil
 }
 

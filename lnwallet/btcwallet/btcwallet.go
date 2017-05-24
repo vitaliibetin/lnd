@@ -2,23 +2,21 @@ package btcwallet
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnwallet"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
-	"github.com/roasbeef/btcwallet/chain"
-	"github.com/roasbeef/btcwallet/waddrmgr"
-	base "github.com/roasbeef/btcwallet/wallet"
-	"github.com/roasbeef/btcwallet/walletdb"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcwallet/chain"
+	"github.com/btcsuite/btcwallet/waddrmgr"
+	base "github.com/btcsuite/btcwallet/wallet"
+	"github.com/btcsuite/btcwallet/walletdb"
+	"math"
 )
 
 const (
@@ -172,26 +170,16 @@ func (b *BtcWallet) Stop() error {
 // final sum.
 //
 // This is a part of the WalletController interface.
-func (b *BtcWallet) ConfirmedBalance(confs int32, witness bool) (btcutil.Amount, error) {
+func (b *BtcWallet) ConfirmedBalance(confs int32) (btcutil.Amount, error) {
 	var balance btcutil.Amount
 
-	if witness {
-		witnessOutputs, err := b.ListUnspentWitness(confs)
-		if err != nil {
-			return 0, err
-		}
-
-		for _, witnessOutput := range witnessOutputs {
-			balance += witnessOutput.Value
-		}
-	} else {
-		outputSum, err := b.wallet.CalculateBalance(confs)
-		if err != nil {
-			return 0, err
-		}
-
-		balance = outputSum
+	outputSum, err := b.wallet.CalculateBalance(confs)
+	if err != nil {
+		return 0, err
 	}
+
+	balance = outputSum
+
 
 	return balance, nil
 }
@@ -292,7 +280,7 @@ func (b *BtcWallet) FetchRootKey() (*btcec.PrivateKey, error) {
 	// With the root address hash obtained, generate the corresponding
 	// address, then retrieve the managed address from the wallet which
 	// will allow us to obtain the private key.
-	rootAddr, err := btcutil.NewAddressWitnessPubKeyHash(rootAddrHash,
+	rootAddr, err := btcutil.NewAddressPubKeyHash(rootAddrHash,
 		b.netParams)
 	if err != nil {
 		return nil, err
@@ -333,11 +321,11 @@ func (b *BtcWallet) UnlockOutpoint(o wire.OutPoint) {
 	b.wallet.UnlockOutpoint(o)
 }
 
-// ListUnspentWitness returns a slice of all the unspent outputs the wallet
-// controls which pay to witness programs either directly or indirectly.
+// ListUnspent returns a slice of all the unspent outputs the wallet
+// controls.
 //
 // This is a part of the WalletController interface.
-func (b *BtcWallet) ListUnspentWitness(minConfs int32) ([]*lnwallet.Utxo, error) {
+func (b *BtcWallet) ListUnspent(minConfs int32) ([]*lnwallet.Utxo, error) {
 	// First, grab all the unfiltered currently unspent outputs.
 	maxConfs := int32(math.MaxInt32)
 	unspentOutputs, err := b.wallet.ListUnspent(minConfs, maxConfs, nil)
@@ -347,35 +335,25 @@ func (b *BtcWallet) ListUnspentWitness(minConfs int32) ([]*lnwallet.Utxo, error)
 
 	// Next, we'll run through all the regular outputs, only saving those
 	// which are p2wkh outputs or a p2wsh output nested within a p2sh output.
-	witnessOutputs := make([]*lnwallet.Utxo, 0, len(unspentOutputs))
+	outputs := make([]*lnwallet.Utxo, 0, len(unspentOutputs))
 	for _, output := range unspentOutputs {
-		pkScript, err := hex.DecodeString(output.ScriptPubKey)
+
+		txid, err := chainhash.NewHashFromStr(output.TxID)
 		if err != nil {
 			return nil, err
 		}
 
-		// TODO(roasbeef): this assumes all p2sh outputs returned by
-		// the wallet are nested p2sh...
-		if txscript.IsPayToWitnessPubKeyHash(pkScript) ||
-			txscript.IsPayToScriptHash(pkScript) {
-			txid, err := chainhash.NewHashFromStr(output.TxID)
-			if err != nil {
-				return nil, err
-			}
-
-			utxo := &lnwallet.Utxo{
-				Value: btcutil.Amount(output.Amount * 1e8),
-				OutPoint: wire.OutPoint{
-					Hash:  *txid,
-					Index: output.Vout,
-				},
-			}
-			witnessOutputs = append(witnessOutputs, utxo)
+		utxo := &lnwallet.Utxo{
+			Value: btcutil.Amount(output.Amount * 1e8),
+			OutPoint: wire.OutPoint{
+				Hash:  *txid,
+				Index: output.Vout,
+			},
 		}
-
+		outputs = append(outputs, utxo)
 	}
 
-	return witnessOutputs, nil
+	return outputs, nil
 }
 
 // PublishTransaction performs cursory validation (dust checks, etc), then

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lightningnetwork/lnd/chainntnfs"
-	"github.com/roasbeef/btcrpcclient"
+	"github.com/btcsuite/btcrpcclient"
 )
 
 // createNewNotifier creates a new instance of the ChainNotifier interface

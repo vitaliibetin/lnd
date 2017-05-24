@@ -8,10 +8,9 @@ import (
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/lnwallet"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // breachArbiter is a special subsystem which is responsible for watching and
@@ -459,7 +458,7 @@ func (b *breachArbiter) breachObserver(contract *lnwallet.LightningChannel,
 		// TODO(roasbeef): also notify utxoNursery, might've had
 		// outbound HTLC's in flight
 		go waitForChanToClose(uint32(closeInfo.SpendingHeight), b.notifier,
-			nil, chanPoint, closeInfo.SpenderTxHash, func() {
+			nil, chanPoint, closeInfo.SpenderTxHash, func(detail *chainntnfs.SpendDetail) {
 
 				brarLog.Infof("Force closed ChannelPoint(%v) is "+
 					"fully closed, updating DB", chanPoint)
@@ -505,11 +504,10 @@ func (b *breachArbiter) breachObserver(contract *lnwallet.LightningChannel,
 		// commitment transaction. This output is just a regular p2wkh
 		// output.
 		localSignDesc := breachInfo.LocalOutputSignDesc
-		localWitness := func(tx *wire.MsgTx, hc *txscript.TxSigHashes,
-			inputIndex int) ([][]byte, error) {
+		localUnlockScript := func(tx *wire.MsgTx,
+			inputIndex int) ([]byte, error) {
 
 			desc := localSignDesc
-			desc.SigHashes = hc
 			desc.InputIndex = inputIndex
 
 			return lnwallet.CommitSpendNoDelay(b.wallet.Signer, desc, tx)
@@ -520,11 +518,10 @@ func (b *breachArbiter) breachObserver(contract *lnwallet.LightningChannel,
 		// advantage of the revocation clause within the output's
 		// witness script.
 		remoteSignDesc := breachInfo.RemoteOutputSignDesc
-		remoteWitness := func(tx *wire.MsgTx, hc *txscript.TxSigHashes,
-			inputIndex int) ([][]byte, error) {
+		remoteWitness := func(tx *wire.MsgTx,
+			inputIndex int) ([]byte, error) {
 
 			desc := breachInfo.RemoteOutputSignDesc
-			desc.SigHashes = hc
 			desc.InputIndex = inputIndex
 
 			return lnwallet.CommitSpendRevoke(b.wallet.Signer, desc, tx)
@@ -538,15 +535,15 @@ func (b *breachArbiter) breachObserver(contract *lnwallet.LightningChannel,
 			chanPoint:  *chanPoint,
 
 			selfOutput: &breachedOutput{
-				amt:         btcutil.Amount(localSignDesc.Output.Value),
-				outpoint:    breachInfo.LocalOutpoint,
-				witnessFunc: localWitness,
+				amt:              btcutil.Amount(localSignDesc.Output.Value),
+				outpoint:         breachInfo.LocalOutpoint,
+				unlockScriptFunc: localUnlockScript,
 			},
 
 			revokedOutput: &breachedOutput{
-				amt:         btcutil.Amount(remoteSignDesc.Output.Value),
-				outpoint:    breachInfo.RemoteOutpoint,
-				witnessFunc: remoteWitness,
+				amt:              btcutil.Amount(remoteSignDesc.Output.Value),
+				outpoint:         breachInfo.RemoteOutpoint,
+				unlockScriptFunc: remoteWitness,
 			},
 
 			doneChan: make(chan struct{}),
@@ -561,9 +558,9 @@ func (b *breachArbiter) breachObserver(contract *lnwallet.LightningChannel,
 // output. A breached output is an output that we are now entitled to due to a
 // revoked commitment transaction being broadcast.
 type breachedOutput struct {
-	amt         btcutil.Amount
-	outpoint    wire.OutPoint
-	witnessFunc witnessGenerator
+	amt              btcutil.Amount
+	outpoint         wire.OutPoint
+	unlockScriptFunc unlockScriptGenerator
 
 	twoStageClaim bool
 }
@@ -620,24 +617,23 @@ func (b *breachArbiter) createJusticeTx(r *retributionInfo) (*wire.MsgTx, error)
 		PreviousOutPoint: r.revokedOutput.outpoint,
 	})
 
-	hashCache := txscript.NewTxSigHashes(justiceTx)
 
 	// Finally, using the witness generation functions attached to the
 	// retribution information, we'll populate the inputs with fully valid
 	// witnesses for both commitment outputs, and all the pending HTLCs at
 	// this state in the channel's history.
 	// TODO(roasbeef): handle the 2-layer HTLCs
-	localWitness, err := r.selfOutput.witnessFunc(justiceTx, hashCache, 0)
+	localUnlockScript, err := r.selfOutput.unlockScriptFunc(justiceTx, 0)
 	if err != nil {
 		return nil, err
 	}
-	justiceTx.TxIn[0].Witness = localWitness
+	justiceTx.TxIn[0].SignatureScript = localUnlockScript
 
-	remoteWitness, err := r.revokedOutput.witnessFunc(justiceTx, hashCache, 1)
+	remoteUnlockScript, err := r.revokedOutput.unlockScriptFunc(justiceTx, 1)
 	if err != nil {
 		return nil, err
 	}
-	justiceTx.TxIn[1].Witness = remoteWitness
+	justiceTx.TxIn[1].SignatureScript = remoteUnlockScript
 
 	return justiceTx, nil
 }

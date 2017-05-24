@@ -8,8 +8,8 @@ import (
 	"hash/crc32"
 	"io"
 
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcutil"
 	"github.com/tv42/zbase32"
 )
 

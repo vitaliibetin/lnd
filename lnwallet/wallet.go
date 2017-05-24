@@ -1,27 +1,31 @@
 package lnwallet
-
+//
 import (
-	"crypto/sha256"
+//	"crypto/sha256"
+//	"fmt"
+//	"sync"
+//	"sync/atomic"
+//
+	"github.com/davecgh/go-spew/spew"
+	"github.com/lightningnetwork/lnd/chainntnfs"
+	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/lightningnetwork/lnd/shachain"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcutil/txsort"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
-
-	"github.com/davecgh/go-spew/spew"
-	"github.com/lightningnetwork/lnd/chainntnfs"
-	"github.com/lightningnetwork/lnd/channeldb"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcutil/hdkeychain"
-
-	"github.com/lightningnetwork/lnd/shachain"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
-	"github.com/roasbeef/btcutil/txsort"
+	"crypto/sha256"
 )
-
+//
 const (
+	// TODO(mkl): fix weights and other stuff
 	// The size of the buffered queue of requests to the wallet from the
 	// outside word.
 	msgBufferSize = 100
@@ -702,13 +706,13 @@ func (l *LightningWallet) handleContributionMsg(req *addContributionMsg) {
 	// Finally, add the 2-of-2 multi-sig output which will set up the lightning
 	// channel.
 	channelCapacity := int64(pendingReservation.partialState.Capacity)
-	witnessScript, multiSigOut, err := GenFundingPkScript(ourKey.SerializeCompressed(),
+	lockScript, multiSigOut, err := GenFundingPkScript(ourKey.SerializeCompressed(),
 		theirKey.SerializeCompressed(), channelCapacity)
 	if err != nil {
 		req.err <- err
 		return
 	}
-	pendingReservation.partialState.FundingWitnessScript = witnessScript
+	pendingReservation.partialState.FundingWitnessScript = lockScript
 
 	// Sort the transaction. Since both side agree to a canonical
 	// ordering, by sorting we no longer need to send the entire
@@ -721,7 +725,6 @@ func (l *LightningWallet) handleContributionMsg(req *addContributionMsg) {
 	pendingReservation.ourFundingInputScripts = make([]*InputScript, 0, len(ourContribution.Inputs))
 	signDesc := SignDescriptor{
 		HashType:  txscript.SigHashAll,
-		SigHashes: txscript.NewTxSigHashes(fundingTx),
 	}
 	for i, txIn := range fundingTx.TxIn {
 		info, err := l.FetchInputInfo(&txIn.PreviousOutPoint)
@@ -742,7 +745,6 @@ func (l *LightningWallet) handleContributionMsg(req *addContributionMsg) {
 		}
 
 		txIn.SignatureScript = inputScript.ScriptSig
-		txIn.Witness = inputScript.Witness
 		pendingReservation.ourFundingInputScripts = append(
 			pendingReservation.ourFundingInputScripts,
 			inputScript,
@@ -786,7 +788,7 @@ func (l *LightningWallet) handleContributionMsg(req *addContributionMsg) {
 
 	// Create the txIn to our commitment transaction; required to construct
 	// the commitment transactions.
-	fundingTxIn := wire.NewTxIn(wire.NewOutPoint(&fundingTxID, multiSigIndex), nil, nil)
+	fundingTxIn := wire.NewTxIn(wire.NewOutPoint(&fundingTxID, multiSigIndex), nil)
 
 	// With the funding tx complete, create both commitment transactions.
 	// TODO(roasbeef): much cleanup + de-duplication
@@ -853,12 +855,11 @@ func (l *LightningWallet) handleContributionMsg(req *addContributionMsg) {
 	// Generate a signature for their version of the initial commitment
 	// transaction.
 	signDesc = SignDescriptor{
-		WitnessScript: witnessScript,
-		PubKey:        ourKey,
-		Output:        multiSigOut,
-		HashType:      txscript.SigHashAll,
-		SigHashes:     txscript.NewTxSigHashes(theirCommitTx),
-		InputIndex:    0,
+		P2SHScript: lockScript,
+		PubKey:     ourKey,
+		Output:     multiSigOut,
+		HashType:   txscript.SigHashAll,
+		InputIndex: 0,
 	}
 	sigTheirCommit, err := l.Signer.SignOutputRaw(theirCommitTx, &signDesc)
 	if err != nil {
@@ -985,11 +986,11 @@ func (l *LightningWallet) handleFundingCounterPartySigs(msg *addCounterPartySigs
 	inputScripts := msg.theirFundingInputScripts
 	fundingTx := res.fundingTx
 	sigIndex := 0
-	fundingHashCache := txscript.NewTxSigHashes(fundingTx)
 	for i, txin := range fundingTx.TxIn {
-		if len(inputScripts) != 0 && len(txin.Witness) == 0 {
+		if len(inputScripts) != 0  {
+			fmt.Println("Inside loop fundingTx.TxIn")
+
 			// Attach the input scripts so we can verify it below.
-			txin.Witness = inputScripts[sigIndex].Witness
 			txin.SignatureScript = inputScripts[sigIndex].ScriptSig
 
 			// Fetch the alleged previous output along with the
@@ -1005,8 +1006,7 @@ func (l *LightningWallet) handleFundingCounterPartySigs(msg *addCounterPartySigs
 
 			// Ensure that the witness+sigScript combo is valid.
 			vm, err := txscript.NewEngine(output.PkScript,
-				fundingTx, i, txscript.StandardVerifyFlags, nil,
-				fundingHashCache, output.Value)
+				fundingTx, i, txscript.StandardVerifyFlags, nil)
 			if err != nil {
 				// TODO(roasbeef): cancel at this stage if
 				// invalid sigs?
@@ -1016,6 +1016,7 @@ func (l *LightningWallet) handleFundingCounterPartySigs(msg *addCounterPartySigs
 				return
 			}
 			if err = vm.Execute(); err != nil {
+				fmt.Println("Error validating transaction in handleFundingCounterPartySigs:", err)
 				msg.err <- fmt.Errorf("cannot validate "+
 					"transaction: %s", err)
 				msg.completeChan <- nil
@@ -1025,7 +1026,6 @@ func (l *LightningWallet) handleFundingCounterPartySigs(msg *addCounterPartySigs
 			sigIndex++
 		}
 	}
-
 	// At this point, we can also record and verify their signature for our
 	// commitment transaction.
 	res.theirCommitmentSig = msg.theirCommitmentSig
@@ -1040,10 +1040,8 @@ func (l *LightningWallet) handleFundingCounterPartySigs(msg *addCounterPartySigs
 	// Next, create the spending scriptSig, and then verify that the script
 	// is complete, allowing us to spend from the funding transaction.
 	theirCommitSig := msg.theirCommitmentSig
-	channelValue := int64(res.partialState.Capacity)
-	hashCache := txscript.NewTxSigHashes(commitTx)
-	sigHash, err := txscript.CalcWitnessSigHash(witnessScript, hashCache,
-		txscript.SigHashAll, commitTx, 0, channelValue)
+	sigHash, err := txscript.CalcSignatureHash(witnessScript,
+		txscript.SigHashAll, commitTx, 0)
 	if err != nil {
 		msg.err <- fmt.Errorf("counterparty's commitment signature is "+
 			"invalid: %v", err)
@@ -1071,7 +1069,6 @@ func (l *LightningWallet) handleFundingCounterPartySigs(msg *addCounterPartySigs
 
 	walletLog.Infof("Broadcasting funding tx for ChannelPoint(%v): %v",
 		res.partialState.FundingOutpoint, spew.Sdump(fundingTx))
-
 	// Broacast the finalized funding transaction to the network.
 	if err := l.PublishTransaction(fundingTx); err != nil {
 		msg.err <- err
@@ -1116,7 +1113,7 @@ func (l *LightningWallet) handleSingleFunderSigs(req *addSingleFunderSigsMsg) {
 	pendingReservation.partialState.TheirCurrentRevocation = req.revokeKey
 	pendingReservation.partialState.ChanID = req.fundingOutpoint
 	pendingReservation.partialState.StateHintObsfucator = req.obsfucator
-	fundingTxIn := wire.NewTxIn(req.fundingOutpoint, nil, nil)
+	fundingTxIn := wire.NewTxIn(req.fundingOutpoint, nil)
 
 	// Now that we have the funding outpoint, we can generate both versions
 	// of the commitment transaction, and generate a signature for the
@@ -1163,12 +1160,11 @@ func (l *LightningWallet) handleSingleFunderSigs(req *addSingleFunderSigsMsg) {
 
 	witnessScript := pendingReservation.partialState.FundingWitnessScript
 	channelValue := int64(pendingReservation.partialState.Capacity)
-	hashCache := txscript.NewTxSigHashes(ourCommitTx)
 	theirKey := pendingReservation.theirContribution.MultiSigKey
 	ourKey := pendingReservation.partialState.OurMultiSigKey
 
-	sigHash, err := txscript.CalcWitnessSigHash(witnessScript, hashCache,
-		txscript.SigHashAll, ourCommitTx, 0, channelValue)
+	sigHash, err := txscript.CalcSignatureHash(witnessScript,
+		txscript.SigHashAll, ourCommitTx, 0)
 	if err != nil {
 		req.err <- err
 		req.completeChan <- nil
@@ -1192,21 +1188,20 @@ func (l *LightningWallet) handleSingleFunderSigs(req *addSingleFunderSigsMsg) {
 	// With their signature for our version of the commitment transactions
 	// verified, we can now generate a signature for their version,
 	// allowing the funding transaction to be safely broadcast.
-	p2wsh, err := witnessScriptHash(witnessScript)
+	p2sh, err := p2ScriptHash(witnessScript)
 	if err != nil {
 		req.err <- err
 		req.completeChan <- nil
 		return
 	}
 	signDesc := SignDescriptor{
-		WitnessScript: witnessScript,
+		P2SHScript: witnessScript,
 		PubKey:        ourKey,
 		Output: &wire.TxOut{
-			PkScript: p2wsh,
+			PkScript: p2sh,
 			Value:    channelValue,
 		},
 		HashType:   txscript.SigHashAll,
-		SigHashes:  txscript.NewTxSigHashes(theirCommitTx),
 		InputIndex: 0,
 	}
 	sigTheirCommit, err := l.Signer.SignOutputRaw(theirCommitTx, &signDesc)
@@ -1255,7 +1250,7 @@ func (l *LightningWallet) selectCoinsAndChange(feeRate uint64, amt btcutil.Amoun
 	// Find all unlocked unspent witness outputs with greater than 1
 	// confirmation.
 	// TODO(roasbeef): make num confs a configuration parameter
-	coins, err := l.ListUnspentWitness(1)
+	coins, err := l.ListUnspent(1)
 	if err != nil {
 		return err
 	}
@@ -1278,12 +1273,13 @@ func (l *LightningWallet) selectCoinsAndChange(feeRate uint64, amt btcutil.Amoun
 
 		// Empty sig script, we'll actually sign if this reservation is
 		// queued up to be completed (the other side accepts).
-		contribution.Inputs[i] = wire.NewTxIn(coin, nil, nil)
+		contribution.Inputs[i] = wire.NewTxIn(coin, nil)
 	}
 
 	// Record any change output(s) generated as a result of the coin
 	// selection.
 	if changeAmt != 0 {
+		// TODO(mkl): DELETE WITNESS
 		changeAddr, err := l.NewAddress(WitnessPubKey, true)
 		if err != nil {
 			return err

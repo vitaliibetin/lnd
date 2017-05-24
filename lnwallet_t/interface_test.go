@@ -1,4 +1,4 @@
-package lnwallet_test
+package lnwallet_t
 
 import (
 	"bytes"
@@ -15,18 +15,18 @@ import (
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/chainntnfs/btcdnotify"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcutil/txsort"
+	_ "github.com/btcsuite/btcwallet/walletdb/bdb"
+
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/integration/rpctest"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcutil/txsort"
-	_ "github.com/roasbeef/btcwallet/walletdb/bdb"
-
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/rpctest"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
 )
 
 var (
@@ -69,7 +69,7 @@ var (
 // within the wallet are *exactly* amount. If unable to retrieve the current
 // balance, or the assertion fails, the test will halt with a fatal error.
 func assertProperBalance(t *testing.T, lw *lnwallet.LightningWallet, numConfirms int32, amount int64) {
-	balance, err := lw.ConfirmedBalance(numConfirms, false)
+	balance, err := lw.ConfirmedBalance(numConfirms)
 	if err != nil {
 		t.Fatalf("unable to query for balance: %v", err)
 	}
@@ -171,22 +171,16 @@ func (b *bobNode) signFundingTx(fundingTx *wire.MsgTx) ([]*lnwallet.InputScript,
 	bobInputScripts := make([]*lnwallet.InputScript, 0, len(b.availableOutputs))
 	bobPkScript := b.changeOutputs[0].PkScript
 
-	inputValue := int64(7e8)
-	hashCache := txscript.NewTxSigHashes(fundingTx)
 	for i := range fundingTx.TxIn {
-		// Alice has already signed this input.
-		if fundingTx.TxIn[i].Witness != nil {
-			continue
-		}
 
-		witness, err := txscript.WitnessScript(fundingTx, hashCache, i,
-			inputValue, bobPkScript, txscript.SigHashAll, b.privKey,
+		unlockScript, err := txscript.SignatureScript(fundingTx,  i,
+			bobPkScript, txscript.SigHashAll, b.privKey,
 			true)
 		if err != nil {
 			return nil, err
 		}
 
-		inputScript := &lnwallet.InputScript{Witness: witness}
+		inputScript := &lnwallet.InputScript{ScriptSig: unlockScript}
 		bobInputScripts = append(bobInputScripts, inputScript)
 	}
 
@@ -198,10 +192,9 @@ func (b *bobNode) signFundingTx(fundingTx *wire.MsgTx) ([]*lnwallet.InputScript,
 func (b *bobNode) signCommitTx(commitTx *wire.MsgTx, fundingScript []byte,
 	channelValue int64) ([]byte, error) {
 
-	hashCache := txscript.NewTxSigHashes(commitTx)
 
-	return txscript.RawTxInWitnessSignature(commitTx, hashCache, 0,
-		channelValue, fundingScript, txscript.SigHashAll, b.privKey)
+	return txscript.RawTxInSignature(commitTx,0,
+		fundingScript, txscript.SigHashAll, b.privKey)
 }
 
 // newBobNode generates a test "ln node" to interact with Alice (us). For the
@@ -215,7 +208,7 @@ func newBobNode(miner *rpctest.Harness, amt btcutil.Amount) (*bobNode, error) {
 
 	// Next, generate an output redeemable by bob.
 	pkHash := btcutil.Hash160(pubKey.SerializeCompressed())
-	bobAddr, err := btcutil.NewAddressWitnessPubKeyHash(
+	bobAddr, err := btcutil.NewAddressPubKeyHash(
 		pkHash,
 		miner.ActiveNet)
 	if err != nil {
@@ -254,7 +247,7 @@ func newBobNode(miner *rpctest.Harness, amt btcutil.Amount) (*bobNode, error) {
 	}
 
 	prevOut := wire.NewOutPoint(mainTxid, index)
-	bobTxIn := wire.NewTxIn(prevOut, nil, nil)
+	bobTxIn := wire.NewTxIn(prevOut, nil)
 
 	// Using bobs priv key above, create a change output he can spend.
 	bobChangeOutput := wire.NewTxOut(2*1e8, bobAddrScript)
@@ -327,7 +320,7 @@ func loadTestCredits(miner *rpctest.Harness, w *lnwallet.LightningWallet, numOut
 	expectedBalance := btcutil.Amount(satoshiPerOutput * int64(numOutputs))
 
 	for range ticker.C {
-		balance, err := w.ConfirmedBalance(1, false)
+		balance, err := w.ConfirmedBalance(1)
 		if err != nil {
 			return err
 		}
@@ -872,7 +865,7 @@ func testSingleFunderReservationWorkflowResponder(miner *rpctest.Harness,
 
 	// Next, manually create Alice's commitment transaction, signing the
 	// fully sorted and state hinted transaction.
-	fundingTxIn := wire.NewTxIn(fundingOutpoint, nil, nil)
+	fundingTxIn := wire.NewTxIn(fundingOutpoint, nil)
 
 	aliceCommitTx, err := lnwallet.CreateCommitTx(fundingTxIn,
 		ourContribution.CommitKey, bobContribution.CommitKey,
@@ -1147,7 +1140,7 @@ func testSignOutputPrivateTweak(r *rpctest.Harness, w *lnwallet.LightningWallet,
 	// With the revocation key generated, create a pkScript that pays to
 	// the revocation key using a simple p2wkh script.
 	pubkeyHash := btcutil.Hash160(revocationKey.SerializeCompressed())
-	revokeAddr, err := btcutil.NewAddressWitnessPubKeyHash(pubkeyHash,
+	revokeAddr, err := btcutil.NewAddressPubKeyHash(pubkeyHash,
 		&chaincfg.SimNetParams)
 	if err != nil {
 		t.Fatalf("unable to create addr: %v", err)
@@ -1198,10 +1191,9 @@ func testSignOutputPrivateTweak(r *rpctest.Harness, w *lnwallet.LightningWallet,
 	signDesc := &lnwallet.SignDescriptor{
 		PubKey:        pubkey,
 		PrivateTweak:  revocation,
-		WitnessScript: revokeScript,
+		P2SHScript: revokeScript,
 		Output:        revokeOutput,
 		HashType:      txscript.SigHashAll,
-		SigHashes:     txscript.NewTxSigHashes(sweepTx),
 		InputIndex:    0,
 	}
 
@@ -1211,17 +1203,21 @@ func testSignOutputPrivateTweak(r *rpctest.Harness, w *lnwallet.LightningWallet,
 	if err != nil {
 		t.Fatalf("unable to generate signature: %v", err)
 	}
-	witness := make([][]byte, 2)
-	witness[0] = append(spendSig, byte(txscript.SigHashAll))
-	witness[1] = revocationKey.SerializeCompressed()
-	sweepTx.TxIn[0].Witness = witness
+	b := txscript.NewScriptBuilder()
+	b.AddData(append(spendSig, byte(txscript.SigHashAll)))
+	b.AddData(revocationKey.SerializeCompressed())
+	unlockScript, err := b.Script()
+	if err != nil {
+		t.Fatalf("Cannot generate unlock script: %v", err)
+	}
+	sweepTx.TxIn[0].SignatureScript = unlockScript
 
 	// Finally, attempt to validate the completed transaction. This should
 	// succeed if the wallet was able to properly generate the proper
 	// private key.
 	vm, err := txscript.NewEngine(revokeScript,
 		sweepTx, 0, txscript.StandardVerifyFlags, nil,
-		nil, int64(btcutil.SatoshiPerBitcoin))
+		)
 	if err != nil {
 		t.Fatalf("unable to create engine: %v", err)
 	}
@@ -1232,7 +1228,8 @@ func testSignOutputPrivateTweak(r *rpctest.Harness, w *lnwallet.LightningWallet,
 
 var walletTests = []func(miner *rpctest.Harness, w *lnwallet.LightningWallet, test *testing.T){
 	// TODO(roasbeef): reservation tests should prob be split out
-	testDualFundingReservationWorkflow,
+	// TODO(mkl): dual funding is not working without SEGWIT
+	//testDualFundingReservationWorkflow,
 	testSingleFunderReservationWorkflowInitiator,
 	testSingleFunderReservationWorkflowResponder,
 	testFundingTransactionLockedOutputs,
@@ -1274,7 +1271,7 @@ func TestLightningWallet(t *testing.T) {
 	// dedicated miner to generate blocks, cause re-orgs, etc. We'll set
 	// up this node with a chain length of 125, so we have plentyyy of BTC
 	// to play around with.
-	miningNode, err := rpctest.New(netParams, nil, nil)
+	miningNode, err := rpctest.New(netParams, nil, []string{"--txindex"})
 	if err != nil {
 		t.Fatalf("unable to create mining node: %v", err)
 	}

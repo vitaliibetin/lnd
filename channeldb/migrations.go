@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/boltdb/bolt"
-	"github.com/roasbeef/btcd/wire"
+	"github.com/btcsuite/btcd/wire"
 )
 
 // deliveryScriptBugMigration is a database migration that patches an incorrect

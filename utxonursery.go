@@ -14,10 +14,10 @@ import (
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/lnwallet"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 var (
@@ -85,26 +85,25 @@ const (
 	commitmentTimeLock witnessType = 0
 )
 
-// witnessGenerator represents a function which is able to generate the final
-// witness for a particular public key script. This function acts as an
+// unlockScriptGenerator represents a function which is able to generate the unlock script
+// for a particular public key script. This function acts as an
 // abstraction layer, hiding the details of the underlying script from the
 // utxoNursery.
-type witnessGenerator func(tx *wire.MsgTx, hc *txscript.TxSigHashes,
-	inputIndex int) ([][]byte, error)
+type unlockScriptGenerator func(tx *wire.MsgTx,
+	inputIndex int) ([]byte, error)
 
-// generateFunc will return the witnessGenerator function that a kidOutput uses
+// generateFunc will return the unlockScriptGenerator function that a kidOutput uses
 // to generate the witness for a sweep transaction. Currently there is only one
 // witnessType but this will be expanded.
 func (wt witnessType) generateFunc(signer *lnwallet.Signer,
-	descriptor *lnwallet.SignDescriptor) witnessGenerator {
+	descriptor *lnwallet.SignDescriptor) unlockScriptGenerator {
 
 	switch wt {
 	case commitmentTimeLock:
-		return func(tx *wire.MsgTx, hc *txscript.TxSigHashes,
-			inputIndex int) ([][]byte, error) {
+		return func(tx *wire.MsgTx,
+			inputIndex int) ([]byte, error) {
 
 			desc := descriptor
-			desc.SigHashes = hc
 			desc.InputIndex = inputIndex
 
 			return lnwallet.CommitSpendTimeout(*signer, desc, tx)
@@ -291,7 +290,7 @@ func (u *utxoNursery) Stop() error {
 
 // kidOutput represents an output that's waiting for a required blockheight
 // before its funds will be available to be moved into the user's wallet.  The
-// struct includes a witnessGenerator closure which will be used to generate
+// struct includes a unlockScriptGenerator closure which will be used to generate
 // the witness required to sweep the output once it's mature.
 //
 // TODO(roasbeef): rename to immatureOutput?
@@ -301,7 +300,7 @@ type kidOutput struct {
 	amt      btcutil.Amount
 	outPoint wire.OutPoint
 
-	witnessFunc witnessGenerator
+	unlockScriptFunc unlockScriptGenerator
 
 	blocksToMaturity uint32
 	confHeight       uint32
@@ -822,7 +821,7 @@ func fetchGraduatingOutputs(db *channeldb.DB, wallet *lnwallet.LightningWallet,
 	// our commitment transaction or theirs, and also if it's an HTLC
 	// output or not.
 	for _, kgtnOutput := range kgtnOutputs {
-		kgtnOutput.witnessFunc = kgtnOutput.witnessType.generateFunc(
+		kgtnOutput.unlockScriptFunc = kgtnOutput.witnessType.generateFunc(
 			&wallet.Signer, kgtnOutput.signDescriptor,
 		)
 	}
@@ -901,14 +900,13 @@ func createSweepTx(wallet *lnwallet.LightningWallet,
 
 	// With all the inputs in place, use each output's unique witness
 	// function to generate the final witness required for spending.
-	hashCache := txscript.NewTxSigHashes(sweepTx)
 	for i, txIn := range sweepTx.TxIn {
-		witness, err := matureOutputs[i].witnessFunc(sweepTx, hashCache, i)
+		unlockScript, err := matureOutputs[i].unlockScriptFunc(sweepTx,  i)
 		if err != nil {
 			return nil, err
 		}
 
-		txIn.Witness = witness
+		txIn.SignatureScript = unlockScript
 	}
 
 	return sweepTx, nil
@@ -1058,7 +1056,7 @@ func serializeKidOutput(w io.Writer, kid *kidOutput) error {
 		return err
 	}
 
-	if err := wire.WriteVarBytes(w, 0, kid.signDescriptor.WitnessScript); err != nil {
+	if err := wire.WriteVarBytes(w, 0, kid.signDescriptor.P2SHScript); err != nil {
 		return err
 	}
 
@@ -1072,7 +1070,7 @@ func serializeKidOutput(w io.Writer, kid *kidOutput) error {
 }
 
 // deserializeKidOutput takes a byte array representation of a kidOutput
-// and converts it to an struct. Note that the witnessFunc method isn't added
+// and converts it to an struct. Note that the unlockScriptFunc method isn't added
 // during deserialization and must be added later based on the value of the
 // witnessType field.
 func deserializeKidOutput(r io.Reader) (*kidOutput, error) {
@@ -1130,7 +1128,7 @@ func deserializeKidOutput(r io.Reader) (*kidOutput, error) {
 	if err != nil {
 		return nil, err
 	}
-	kid.signDescriptor.WitnessScript = descWitnessScript
+	kid.signDescriptor.P2SHScript = descWitnessScript
 
 	descTxOut := &wire.TxOut{}
 	if err := readTxOut(r, descTxOut); err != nil {

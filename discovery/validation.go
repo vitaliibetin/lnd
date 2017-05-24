@@ -3,8 +3,8 @@ package discovery
 import (
 	"github.com/go-errors/errors"
 	"github.com/lightningnetwork/lnd/lnwire"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
 
 // validateChannelAnn validates the channel announcement message and checks

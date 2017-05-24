@@ -11,7 +11,7 @@ import (
 	"github.com/lightningnetwork/lnd/discovery"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/routing"
-	"github.com/roasbeef/btcd/connmgr"
+	"github.com/btcsuite/btcd/connmgr"
 )
 
 // Loggers per subsystem.  Note that backendLog is a seelog logger that all of

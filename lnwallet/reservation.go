@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/lightningnetwork/lnd/channeldb"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // ChannelContribution is the primary constituent of the funding workflow within
@@ -60,7 +60,7 @@ type ChannelContribution struct {
 // output. This struct is used rather than just a witness, or scripSig in
 // order to accommodate nested p2sh which utilizes both types of input scripts.
 type InputScript struct {
-	Witness   [][]byte
+	//Witness   [][]byte
 	ScriptSig []byte
 }
 

@@ -4,7 +4,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/roasbeef/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 // Listener is an implementation of a net.Conn which executes an authenticated

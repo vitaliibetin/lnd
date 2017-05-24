@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/lightningnetwork/lnd/lnwire"
-	"github.com/roasbeef/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 func establishTestConnection() (net.Conn, net.Conn, error) {

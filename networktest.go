@@ -25,13 +25,13 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/rpctest"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcrpcclient"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/integration/rpctest"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcrpcclient"
+	"github.com/btcsuite/btcutil"
 )
 
 var (
@@ -53,6 +53,10 @@ var (
 	defaultClientPort = 19556
 
 	harnessNetParams = &chaincfg.SimNetParams
+)
+
+const (
+	timeoutCoef = 3
 )
 
 // generateListeningPorts returns two strings representing ports to listen on
@@ -220,7 +224,7 @@ func (l *lightningNode) Start(lndError chan error) error {
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
-		grpc.WithTimeout(time.Second * 20),
+		grpc.WithTimeout(time.Second * 20 * timeoutCoef),
 	}
 	conn, err := grpc.Dial(l.rpcAddr, opts...)
 	if err != nil {
@@ -756,7 +760,7 @@ out:
 				bobResp.Balance == expectedBalance {
 				break out
 			}
-		case <-time.After(time.Second * 30):
+		case <-time.After(time.Second * 30 * timeoutCoef):
 			return fmt.Errorf("balances not synced after deadline")
 		}
 	}
@@ -822,7 +826,7 @@ func (n *networkHarness) ConnectNodes(ctx context.Context, a, b *lightningNode) 
 		return err
 	}
 
-	timeout := time.After(time.Second * 15)
+	timeout := time.After(time.Second * 15 * timeoutCoef)
 	for {
 
 		select {
@@ -963,6 +967,7 @@ func (n *networkHarness) WaitForTxBroadcast(ctx context.Context, txid chainhash.
 		return fmt.Errorf("tx not seen before context timeout")
 	}
 }
+
 
 // OpenChannel attempts to open a channel between srcNode and destNode with the
 // passed channel funding parameters. If the passed context has a timeout, then
@@ -1105,6 +1110,73 @@ func (n *networkHarness) WaitForChannelOpen(ctx context.Context,
 	}
 }
 
+
+// NOSEG
+func (n *networkHarness) isOutPointSpentInMempool(outPoint wire.OutPoint) (bool, error) {
+	mempool, err := n.Miner.Node.GetRawMempool()
+	if err != nil {
+		return false, err
+	}
+	for _, tx := range mempool {
+		txRez, err := n.Miner.Node.GetRawTransaction(tx)
+		if err != nil {
+			return false, err
+		}
+		txRaw := txRez.MsgTx()
+		for _, txIn := range txRaw.TxIn {
+			if txIn.PreviousOutPoint.String() == outPoint.String() {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+// NOSEG
+func (n *networkHarness) waitForOutpointSpend(ctx context.Context, outPoint wire.OutPoint) error {
+	chQuit := make(chan struct{})
+	delay := 100 * time.Millisecond
+	chErr := make(chan error, 1)
+	go func(){
+		for {
+			select {
+			case <-chQuit:
+				return
+			default:
+			}
+			// For some reason GetTxOut doesnt check mempool (or maybe it does not suppose to check it?)
+			// so we need to check it manually
+			inMempool, err := n.isOutPointSpentInMempool(outPoint)
+			if err != nil {
+				chErr <- err
+				return
+			}
+			if inMempool {
+				chErr <- nil
+				return
+			}
+			rez, err := n.Miner.Node.GetTxOut(&outPoint.Hash, outPoint.Index, true)
+			if err != nil {
+				chErr <- err
+				return
+			}
+			// If rez is nil then outpoint is spent
+			if rez == nil {
+				chErr <- nil
+				return
+			}
+			time.Sleep(delay)
+		}
+	}()
+	select {
+	case err := <-chErr:
+		return err
+	case <-ctx.Done():
+		close(chQuit)
+		return fmt.Errorf("timeout reached before outpoint is spent")
+	}
+}
+
 // CloseChannel close channel attempts to close the channel indicated by the
 // passed channel point, initiated by the passed lnNode. If the passed context
 // has a timeout, then if the timeout is reached before the channel close is
@@ -1139,13 +1211,26 @@ func (n *networkHarness) CloseChannel(ctx context.Context,
 				"instead got %v", pendingClose)
 			return
 		}
-
 		closeTxid, err := chainhash.NewHash(pendingClose.ClosePending.Txid)
 		if err != nil {
 			errChan <- err
 			return
 		}
-		if err := n.WaitForTxBroadcast(ctx, *closeTxid); err != nil {
+		// TODO(mkl): implement correct checking that outpoint is spent
+		// NOSEG
+		fundingPointHash, err := chainhash.NewHash(cp.FundingTxid)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		fundingOutPoint := wire.NewOutPoint(
+			fundingPointHash,
+			cp.GetOutputIndex(),
+		)
+		if err := n.waitForOutpointSpend(ctx, *fundingOutPoint); err != nil {
+			// We even doesn't get here because errChan is not read.
+			// Because first context chan is read and then err chan. So if error in context chan
+			// than errChan is not read
 			errChan <- err
 			return
 		}
@@ -1156,6 +1241,7 @@ func (n *networkHarness) CloseChannel(ctx context.Context,
 	// occurs, or the channel close update is received.
 	select {
 	case <-ctx.Done():
+		// Closing error goes from here
 		return nil, nil, fmt.Errorf("timeout reached before channel close " +
 			"initiated")
 	case err := <-errChan:
@@ -1299,7 +1385,7 @@ func (n *networkHarness) SendCoins(ctx context.Context, amt btcutil.Amount,
 			if currentBal.Balance == initialBalance.Balance+amt.ToBTC() {
 				return nil
 			}
-		case <-time.After(time.Second * 30):
+		case <-time.After(time.Second * 30 * timeoutCoef):
 			return fmt.Errorf("balances not synced after deadline")
 		}
 	}

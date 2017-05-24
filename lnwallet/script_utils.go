@@ -9,11 +9,11 @@ import (
 
 	"golang.org/x/crypto/hkdf"
 
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 var (
@@ -49,13 +49,21 @@ const (
 
 // witnessScriptHash generates a pay-to-witness-script-hash public key script
 // paying to a version 0 witness program paying to the passed redeem script.
-func witnessScriptHash(witnessScript []byte) ([]byte, error) {
-	bldr := txscript.NewScriptBuilder()
+//func witnessScriptHash(witnessScript []byte) ([]byte, error) {
+//	bldr := txscript.NewScriptBuilder()
+//
+//	bldr.AddOp(txscript.OP_0)
+//	scriptHash := sha256.Sum256(witnessScript)
+//	bldr.AddData(scriptHash[:])
+//	return bldr.Script()
+//}
 
-	bldr.AddOp(txscript.OP_0)
-	scriptHash := sha256.Sum256(witnessScript)
-	bldr.AddData(scriptHash[:])
-	return bldr.Script()
+func p2ScriptHash(script []byte) ([]byte, error) {
+	b := txscript.NewScriptBuilder()
+	b.AddOp(txscript.OP_HASH160)
+	b.AddData(btcutil.Hash160(script))
+	b.AddOp(txscript.OP_EQUAL)
+	return b.Script()
 }
 
 // genMultiSigScript generates the non-p2sh'd multisig script for 2 of 2
@@ -99,7 +107,7 @@ func GenFundingPkScript(aPub, bPub []byte, amt int64) ([]byte, *wire.TxOut, erro
 
 	// With the 2-of-2 script in had, generate a p2wsh script which pays
 	// to the funding script.
-	pkScript, err := witnessScriptHash(witnessScript)
+	pkScript, err := p2ScriptHash(witnessScript)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -107,31 +115,35 @@ func GenFundingPkScript(aPub, bPub []byte, amt int64) ([]byte, *wire.TxOut, erro
 	return witnessScript, wire.NewTxOut(amt, pkScript), nil
 }
 
-// SpendMultiSig generates the witness stack required to redeem the 2-of-2 p2wsh
+// SpendMultiSig generates the unlock script required to redeem the 2-of-2 p2sh
 // multi-sig output.
-func SpendMultiSig(witnessScript, pubA, sigA, pubB, sigB []byte) [][]byte {
-	witness := make([][]byte, 4)
+func SpendMultiSig(lockScript, pubA, sigA, pubB, sigB []byte) []byte {
+	b := txscript.NewScriptBuilder()
 
-	// When spending a p2wsh multi-sig script, rather than an OP_0, we add
-	// a nil stack element to eat the extra pop.
-	witness[0] = nil
+	// When spending a p2sh multi-sig script, we add an OP_0
+	b.AddOp(txscript.OP_0)
 
-	// When initially generating the witnessScript, we sorted the serialized
+	// When initially generating the script, we sorted the serialized
 	// public keys in descending order. So we do a quick comparison in order
 	// ensure the signatures appear on the Script Virtual Machine stack in
 	// the correct order.
 	if bytes.Compare(pubA, pubB) == -1 {
-		witness[1] = sigB
-		witness[2] = sigA
+		b.AddData(sigB)
+		b.AddData(sigA)
 	} else {
-		witness[1] = sigA
-		witness[2] = sigB
+		b.AddData(sigA)
+		b.AddData(sigB)
 	}
 
 	// Finally, add the preimage as the last witness element.
-	witness[3] = witnessScript
+	b.AddData(lockScript)
 
-	return witness
+	unlockScript, err := b.Script()
+	if err != nil {
+		panic("Cannot generate unlockScript: " + err.Error())
+	}
+
+	return unlockScript
 }
 
 // FindScriptOutputIndex finds the index of the public key script output
@@ -252,65 +264,65 @@ func senderHTLCScript(absoluteTimeout, relativeTimeout uint32, senderKey,
 // the receiver's public key.
 func senderHtlcSpendRevoke(commitScript []byte, outputAmt btcutil.Amount,
 	reciverKey *btcec.PrivateKey, sweepTx *wire.MsgTx,
-	revokePreimage []byte) (wire.TxWitness, error) {
+	revokePreimage []byte) ([]byte, error) {
 
-	hashCache := txscript.NewTxSigHashes(sweepTx)
-	sweepSig, err := txscript.RawTxInWitnessSignature(
-		sweepTx, hashCache, 0, int64(outputAmt), commitScript,
+	sweepSig, err := txscript.RawTxInSignature(
+		sweepTx, 0, commitScript,
 		txscript.SigHashAll, reciverKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// In order to force script execution to enter the revocation clause,
-	// we place two one's as the first items in the final evaluated witness
-	// stack.
-	witnessStack := wire.TxWitness(make([][]byte, 5))
-	witnessStack[0] = sweepSig
-	witnessStack[1] = revokePreimage
-	witnessStack[2] = []byte{1}
-	witnessStack[3] = []byte{1}
-	witnessStack[4] = commitScript
+	// we place two one's as the first items in the final p2sh program
 
-	return witnessStack, nil
+	b := txscript.NewScriptBuilder()
+	b.AddData(sweepSig)
+	b.AddData(revokePreimage)
+	b.AddOp(txscript.OP_1)
+	b.AddOp(txscript.OP_1)
+	b.AddData(commitScript)
+
+	unlockScript, err := b.Script()
+	return unlockScript, err
 }
 
-// senderHtlcSpendRedeem constructs a valid witness allowing the receiver of an
+// senderHtlcSpendRedeem constructs a valid unlockScript allowing the receiver of an
 // HTLC to redeem the pending output in the scenario that the sender broadcasts
 // their version of the commitment transaction. A valid spend requires
 // knowledge of the payment preimage, and a valid signature under the
 // receivers public key.
 func senderHtlcSpendRedeem(commitScript []byte, outputAmt btcutil.Amount,
 	reciverKey *btcec.PrivateKey, sweepTx *wire.MsgTx,
-	paymentPreimage []byte) (wire.TxWitness, error) {
+	paymentPreimage []byte) ([]byte, error) {
 
-	hashCache := txscript.NewTxSigHashes(sweepTx)
-	sweepSig, err := txscript.RawTxInWitnessSignature(
-		sweepTx, hashCache, 0, int64(outputAmt), commitScript,
+	sweepSig, err := txscript.RawTxInSignature(
+		sweepTx, 0, commitScript,
 		txscript.SigHashAll, reciverKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// We force script execution into the HTLC redemption clause by placing
-	// a one, then a zero as the first items in the final evaluated
-	// witness stack.
-	witnessStack := wire.TxWitness(make([][]byte, 5))
-	witnessStack[0] = sweepSig
-	witnessStack[1] = paymentPreimage
-	witnessStack[2] = []byte{0}
-	witnessStack[3] = []byte{1}
-	witnessStack[4] = commitScript
+	// a one, then a zero as the first items
 
-	return witnessStack, nil
+	b := txscript.NewScriptBuilder()
+	b.AddData(sweepSig)
+	b.AddData(paymentPreimage)
+	b.AddOp(txscript.OP_0)
+	b.AddOp(txscript.OP_1)
+	b.AddData(commitScript)
+
+	unlockScript, err := b.Script()
+	return unlockScript, err
 }
 
-// htlcSpendTimeout constructs a valid witness allowing the sender of an HTLC
+// htlcSpendTimeout constructs a valid unlockScript allowing the sender of an HTLC
 // to recover the pending funds after an absolute, then relative locktime
 // period.
 func senderHtlcSpendTimeout(commitScript []byte, outputAmt btcutil.Amount,
 	senderKey *btcec.PrivateKey, sweepTx *wire.MsgTx,
-	absoluteTimeout, relativeTimeout uint32) (wire.TxWitness, error) {
+	absoluteTimeout, relativeTimeout uint32) ([]byte, error) {
 
 	// Since the HTLC output has an absolute timeout before we're permitted
 	// to sweep the output, we need to set the locktime of this sweeping
@@ -328,22 +340,21 @@ func senderHtlcSpendTimeout(commitScript []byte, outputAmt btcutil.Amount,
 	// spending a pkscript with OP_CSV within it *must* be >= 2.
 	sweepTx.Version = 2
 
-	hashCache := txscript.NewTxSigHashes(sweepTx)
-	sweepSig, err := txscript.RawTxInWitnessSignature(
-		sweepTx, hashCache, 0, int64(outputAmt), commitScript,
+	sweepSig, err := txscript.RawTxInSignature(
+		sweepTx, 0, commitScript,
 		txscript.SigHashAll, senderKey)
 	if err != nil {
 		return nil, err
 	}
 
-	// We place a zero as the first item of the evaluated witness stack in
-	// order to force Script execution to the HTLC timeout clause.
-	witnessStack := wire.TxWitness(make([][]byte, 3))
-	witnessStack[0] = sweepSig
-	witnessStack[1] = []byte{0}
-	witnessStack[2] = commitScript
+	// We place a zero as the first item after the P2SH program
+	b := txscript.NewScriptBuilder()
+	b.AddData(sweepSig)
+	b.AddOp(txscript.OP_0)
+	b.AddData(commitScript)
+	unlockScript, err := b.Script()
 
-	return witnessStack, nil
+	return unlockScript, err
 }
 
 // receiverHTLCScript constructs the public key script for an incoming HTLC
@@ -442,14 +453,14 @@ func receiverHTLCScript(absoluteTimeout, relativeTimeout uint32, senderKey,
 	return builder.Script()
 }
 
-// receiverHtlcSpendRedeem constructs a valid witness allowing the receiver of
+// receiverHtlcSpendRedeem constructs a valid unlock script allowing the receiver of
 // an HTLC to redeem the conditional payment in the event that their commitment
 // transaction is broadcast. Since this is a pay out to the receiving party as
 // an output on their commitment transaction, a relative time delay is required
 // before the output can be spent.
 func receiverHtlcSpendRedeem(commitScript []byte, outputAmt btcutil.Amount,
 	reciverKey *btcec.PrivateKey, sweepTx *wire.MsgTx,
-	paymentPreimage []byte, relativeTimeout uint32) (wire.TxWitness, error) {
+	paymentPreimage []byte, relativeTimeout uint32) ([]byte, error) {
 
 	// In order to properly spend the transaction, we need to set the
 	// sequence number. We do this by converting the relative block delay
@@ -461,83 +472,82 @@ func receiverHtlcSpendRedeem(commitScript []byte, outputAmt btcutil.Amount,
 	// spending a pkscript with OP_CSV within it *must* be >= 2.
 	sweepTx.Version = 2
 
-	hashCache := txscript.NewTxSigHashes(sweepTx)
-	sweepSig, err := txscript.RawTxInWitnessSignature(
-		sweepTx, hashCache, 0, int64(outputAmt), commitScript,
+	sweepSig, err := txscript.RawTxInSignature(
+		sweepTx,  0, commitScript,
 		txscript.SigHashAll, reciverKey)
 	if err != nil {
 		return nil, err
 	}
 
-	// Place a one as the first item in the evaluated witness stack to
+	// Place a one as the first item in the stack to
 	// force script execution to the HTLC redemption clause.
-	witnessStack := wire.TxWitness(make([][]byte, 4))
-	witnessStack[0] = sweepSig
-	witnessStack[1] = paymentPreimage
-	witnessStack[2] = []byte{1}
-	witnessStack[3] = commitScript
-
-	return witnessStack, nil
+	b := txscript.NewScriptBuilder()
+	b.AddData(sweepSig)
+	b.AddData(paymentPreimage)
+	b.AddOp(txscript.OP_1)
+	b.AddData(commitScript)
+	unlockScript, err := b.Script()
+	return unlockScript, err
 }
 
-// receiverHtlcSpendRevoke constructs a valid witness allowing the sender of an
+// receiverHtlcSpendRevoke constructs a unlock script allowing the sender of an
 // HTLC within a previously revoked commitment transaction to re-claim the
 // pending funds in the case that the receiver broadcasts this revoked
 // commitment transaction.
 func receiverHtlcSpendRevoke(commitScript []byte, outputAmt btcutil.Amount,
 	senderKey *btcec.PrivateKey, sweepTx *wire.MsgTx,
-	revokePreimage []byte) (wire.TxWitness, error) {
+	revokePreimage []byte) ([]byte, error) {
 
 	// TODO(roasbeef): move sig generate outside func, or just factor out?
-	hashCache := txscript.NewTxSigHashes(sweepTx)
-	sweepSig, err := txscript.RawTxInWitnessSignature(
-		sweepTx, hashCache, 0, int64(outputAmt), commitScript,
+	sweepSig, err := txscript.RawTxInSignature(
+		sweepTx, 0, commitScript,
 		txscript.SigHashAll, senderKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// We place a zero, then one as the first items in the evaluated
-	// witness stack in order to force script execution to the HTLC
+	// stack in order to force script execution to the HTLC
 	// revocation clause.
-	witnessStack := wire.TxWitness(make([][]byte, 5))
-	witnessStack[0] = sweepSig
-	witnessStack[1] = revokePreimage
-	witnessStack[2] = []byte{1}
-	witnessStack[3] = []byte{0}
-	witnessStack[4] = commitScript
+	b := txscript.NewScriptBuilder()
+	b.AddData(sweepSig)
+	b.AddData(revokePreimage)
+	b.AddOp(txscript.OP_1)
+	b.AddOp(txscript.OP_0)
+	b.AddData(commitScript)
 
-	return witnessStack, nil
+	unlockScript, err := b.Script()
+	return unlockScript, err
 }
 
-// receiverHtlcSpendTimeout constructs a valid witness allowing the sender of
+// receiverHtlcSpendTimeout constructs a valid unlock script allowing the sender of
 // an HTLC to recover the pending funds after an absolute timeout in the
 // scenario that the receiver of the HTLC broadcasts their version of the
 // commitment transaction.
 func receiverHtlcSpendTimeout(commitScript []byte, outputAmt btcutil.Amount,
 	senderKey *btcec.PrivateKey, sweepTx *wire.MsgTx,
-	absoluteTimeout uint32) (wire.TxWitness, error) {
+	absoluteTimeout uint32) ([]byte, error) {
 
 	// The HTLC output has an absolute time period before we are permitted
 	// to recover the pending funds. Therefore we need to set the locktime
 	// on this sweeping transaction in order to pass Script verification.
 	sweepTx.LockTime = absoluteTimeout
 
-	hashCache := txscript.NewTxSigHashes(sweepTx)
-	sweepSig, err := txscript.RawTxInWitnessSignature(
-		sweepTx, hashCache, 0, int64(outputAmt), commitScript,
+	sweepSig, err := txscript.RawTxInSignature(
+		sweepTx, 0, commitScript,
 		txscript.SigHashAll, senderKey)
 	if err != nil {
 		return nil, err
 	}
 
-	witnessStack := wire.TxWitness(make([][]byte, 4))
-	witnessStack[0] = sweepSig
-	witnessStack[1] = []byte{0}
-	witnessStack[2] = []byte{0}
-	witnessStack[3] = commitScript
+	b := txscript.NewScriptBuilder()
+	b.AddData(sweepSig)
+	b.AddOp(txscript.OP_0)
+	b.AddOp(txscript.OP_0)
+	b.AddData(commitScript)
+	unlockScript, err := b.Script()
 
-	return witnessStack, nil
+	return unlockScript, err
 }
 
 // lockTimeToSequence converts the passed relative locktime to a sequence
@@ -606,17 +616,21 @@ func commitScriptToSelf(csvTimeout uint32, selfKey, revokeKey *btcec.PublicKey) 
 
 // commitScriptUnencumbered constructs the public key script on the commitment
 // transaction paying to the "other" party. The constructed output is a normal
-// p2wkh output spendable immediately, requiring no contestation period.
+// p2pkh output spendable immediately, requiring no contestation period.
 func commitScriptUnencumbered(key *btcec.PublicKey) ([]byte, error) {
 	// This script goes to the "other" party, and it spendable immediately.
 	builder := txscript.NewScriptBuilder()
-	builder.AddOp(txscript.OP_0)
+	//OP_DUP OP_HASH160 <PubkeyHash> OP_EQUALVERIFY OP_CHECKSIG
+	builder.AddOp(txscript.OP_DUP)
+	builder.AddOp(txscript.OP_HASH160)
 	builder.AddData(btcutil.Hash160(key.SerializeCompressed()))
+	builder.AddOp(txscript.OP_EQUALVERIFY)
+	builder.AddOp(txscript.OP_CHECKSIG)
 
 	return builder.Script()
 }
 
-// CommitSpendTimeout constructs a valid witness allowing the owner of a
+// CommitSpendTimeout constructs a valid unlock script allowing the owner of a
 // particular commitment transaction to spend the output returning settled
 // funds back to themselves after a relative block timeout.  In order to
 // properly spend the transaction, the target input's sequence number should be
@@ -624,7 +638,7 @@ func commitScriptUnencumbered(key *btcec.PublicKey) ([]byte, error) {
 // redeem script.  Additionally, OP_CSV requires that the version of the
 // transaction spending a pkscript with OP_CSV within it *must* be >= 2.
 func CommitSpendTimeout(signer Signer, signDesc *SignDescriptor,
-	sweepTx *wire.MsgTx) (wire.TxWitness, error) {
+	sweepTx *wire.MsgTx) ([]byte, error) {
 
 	// Ensure the transaction version supports the validation of sequence
 	// locks and CSV semantics.
@@ -640,52 +654,54 @@ func CommitSpendTimeout(signer Signer, signDesc *SignDescriptor,
 		return nil, err
 	}
 
-	// Place an empty byte as the first item in the evaluated witness stack
+	// Place an empty byte as the first item in the evaluated stack
 	// to force script execution to the timeout spend clause. We need to
 	// place an empty byte in order to ensure our script is still valid
 	// from the PoV of nodes that are enforcing minimal OP_IF/OP_NOTIF.
-	witnessStack := wire.TxWitness(make([][]byte, 3))
-	witnessStack[0] = append(sweepSig, byte(txscript.SigHashAll))
-	witnessStack[1] = nil
-	witnessStack[2] = signDesc.WitnessScript
+	b := txscript.NewScriptBuilder()
+	b.AddData(append(sweepSig, byte(txscript.SigHashAll)))
+	b.AddData([]byte{})
+	b.AddData(signDesc.P2SHScript)
+	unlockScript, err := b.Script()
 
-	return witnessStack, nil
+	return unlockScript, err
 }
 
-// CommitSpendRevoke constructs a valid witness allowing a node to sweep the
+// CommitSpendRevoke constructs a valid unlock script allowing a node to sweep the
 // settled output of a malicious counterparty who broadcasts a revoked
 // commitment transaction.
 func CommitSpendRevoke(signer Signer, signDesc *SignDescriptor,
-	sweepTx *wire.MsgTx) (wire.TxWitness, error) {
+	sweepTx *wire.MsgTx) ([]byte, error) {
 
 	sweepSig, err := signer.SignOutputRaw(sweepTx, signDesc)
 	if err != nil {
 		return nil, err
 	}
 
-	// Place a 1 as the first item in the evaluated witness stack to
+	// Place a 1 as the first item in the evaluated stack to
 	// force script execution to the revocation clause.
-	witnessStack := wire.TxWitness(make([][]byte, 3))
-	witnessStack[0] = append(sweepSig, byte(txscript.SigHashAll))
-	witnessStack[1] = []byte{1}
-	witnessStack[2] = signDesc.WitnessScript
+	b := txscript.NewScriptBuilder()
+	b.AddData(append(sweepSig, byte(txscript.SigHashAll)))
+	b.AddOp(txscript.OP_1)
+	b.AddData(signDesc.P2SHScript)
+	unlockScript, err := b.Script()
 
-	return witnessStack, nil
+	return unlockScript, err
 }
 
-// CommitSpendNoDelay constructs a valid witness allowing a node to spend their
+// CommitSpendNoDelay constructs a valid unlock script allowing a node to spend their
 // settled no-delay output on the counterparty's commitment transaction.
 func CommitSpendNoDelay(signer Signer, signDesc *SignDescriptor,
-	sweepTx *wire.MsgTx) (wire.TxWitness, error) {
+	sweepTx *wire.MsgTx) ([]byte, error) {
 
-	// This is just a regular p2wkh spend which looks something like:
-	//  * witness: <sig> <pubkey>
+	// This is just a regular p2pkh spend which looks something like:
+	// <sig> <pubkey>
 	inputScript, err := signer.ComputeInputScript(sweepTx, signDesc)
 	if err != nil {
 		return nil, err
 	}
 
-	return wire.TxWitness(inputScript.Witness), nil
+	return inputScript.ScriptSig, nil
 }
 
 // DeriveRevocationPubkey derives the revocation public key given the

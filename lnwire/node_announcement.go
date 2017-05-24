@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/go-errors/errors"
-	"github.com/roasbeef/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 var (

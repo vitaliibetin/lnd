@@ -2,8 +2,8 @@ package main
 
 import (
 	litecoinCfg "github.com/ltcsuite/ltcd/chaincfg"
-	bitcoinCfg "github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/wire"
+	bitcoinCfg "github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/wire"
 )
 
 // activeNetParams is a pointer to the parameters specific to the currently
@@ -61,8 +61,6 @@ func applyLitecoinParams(params *bitcoinNetParams) {
 	params.PubKeyHashAddrID = liteTestNetParams.PubKeyHashAddrID
 	params.ScriptHashAddrID = liteTestNetParams.ScriptHashAddrID
 	params.PrivateKeyID = liteTestNetParams.PrivateKeyID
-	params.WitnessPubKeyHashAddrID = liteTestNetParams.WitnessPubKeyHashAddrID
-	params.WitnessScriptHashAddrID = liteTestNetParams.WitnessScriptHashAddrID
 
 	copy(params.HDPrivateKeyID[:], liteTestNetParams.HDPrivateKeyID[:])
 	copy(params.HDPublicKeyID[:], liteTestNetParams.HDPublicKeyID[:])

@@ -3,7 +3,7 @@ package lnwire
 import (
 	"fmt"
 
-	"github.com/roasbeef/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 // serializeSigToWire serializes a *Signature to [64]byte in the format

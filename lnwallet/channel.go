@@ -1,5 +1,5 @@
 package lnwallet
-
+//
 import (
 	"bytes"
 	"container/list"
@@ -7,19 +7,19 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-
+//
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/lnwire"
-	"github.com/roasbeef/btcd/blockchain"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
-	"github.com/roasbeef/btcutil/txsort"
+	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+//
+	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcutil/txsort"
+	"github.com/btcsuite/btcd/txscript"
 )
 
 var zeroHash chainhash.Hash
@@ -762,15 +762,15 @@ func NewLightningChannel(signer Signer, events chainntnfs.ChainNotifier,
 	// Create the sign descriptor which we'll be using very frequently to
 	// request a signature for the 2-of-2 multi-sig from the signer in
 	// order to complete channel state transitions.
-	fundingPkScript, err := witnessScriptHash(state.FundingWitnessScript)
+	fundingPkScript, err := p2ScriptHash(state.FundingWitnessScript)
 	if err != nil {
 		return nil, err
 	}
-	lc.fundingTxIn = wire.NewTxIn(state.FundingOutpoint, nil, nil)
+	lc.fundingTxIn = wire.NewTxIn(state.FundingOutpoint, nil)
 	lc.fundingP2WSH = fundingPkScript
 	lc.signDesc = &SignDescriptor{
 		PubKey:        lc.channelState.OurMultiSigKey,
-		WitnessScript: lc.channelState.FundingWitnessScript,
+		P2SHScript: lc.channelState.FundingWitnessScript,
 		Output: &wire.TxOut{
 			PkScript: lc.fundingP2WSH,
 			Value:    int64(lc.channelState.Capacity),
@@ -883,7 +883,7 @@ func newBreachRetribution(chanState *channeldb.OpenChannel, stateNum uint64,
 	if err != nil {
 		return nil, err
 	}
-	remoteWitnessHash, err := witnessScriptHash(remotePkScript)
+	remoteWitnessHash, err := p2ScriptHash(remotePkScript)
 	if err != nil {
 		return nil, err
 	}
@@ -929,7 +929,7 @@ func newBreachRetribution(chanState *channeldb.OpenChannel, stateNum uint64,
 		RemoteOutputSignDesc: &SignDescriptor{
 			PubKey:        localCommitKey,
 			PrivateTweak:  revocationPreimage[:],
-			WitnessScript: remotePkScript,
+			P2SHScript: remotePkScript,
 			Output: &wire.TxOut{
 				PkScript: remoteWitnessHash,
 				Value:    int64(revokedSnapshot.RemoteBalance),
@@ -1650,7 +1650,6 @@ func (lc *LightningChannel) SignNextCommitment() ([]byte, error) {
 		}))
 
 	// Sign their version of the new commitment transaction.
-	lc.signDesc.SigHashes = txscript.NewTxSigHashes(newCommitView.txn)
 	sig, err := lc.signer.SignOutputRaw(newCommitView.txn, lc.signDesc)
 	if err != nil {
 		return nil, err
@@ -1780,9 +1779,9 @@ func (lc *LightningChannel) ReceiveNewCommitment(rawSig []byte) error {
 	// this newly proposed state update.
 	localCommitTx := localCommitmentView.txn
 	multiSigScript := lc.channelState.FundingWitnessScript
-	hashCache := txscript.NewTxSigHashes(localCommitTx)
-	sigHash, err := txscript.CalcWitnessSigHash(multiSigScript, hashCache,
-		txscript.SigHashAll, localCommitTx, 0, int64(lc.channelState.Capacity))
+	sigHash, err := txscript.CalcSignatureHash(multiSigScript,
+		txscript.SigHashAll, localCommitTx, 0)
+	// TODO(mkl): what is this doing?
 	if err != nil {
 		// TODO(roasbeef): fetchview has already mutated the HTLCs...
 		//  * need to either roll-back, or make pure
@@ -2312,7 +2311,7 @@ func (lc *LightningChannel) genHtlcScript(isIncoming, ourCommit bool,
 	}
 	// Now that we have the redeem scripts, create the P2WSH public key
 	// script for the output itself.
-	htlcP2WSH, err := witnessScriptHash(pkScript)
+	htlcP2WSH, err := p2ScriptHash(pkScript)
 	if err != nil {
 		return nil, err
 	}
@@ -2366,7 +2365,6 @@ func (lc *LightningChannel) getSignedCommitTx() (*wire.MsgTx, error) {
 
 	// With this, we then generate the full witness so the caller can
 	// broadcast a fully signed transaction.
-	lc.signDesc.SigHashes = txscript.NewTxSigHashes(commitTx)
 	ourSigRaw, err := lc.signer.SignOutputRaw(commitTx, lc.signDesc)
 	if err != nil {
 		return nil, err
@@ -2379,7 +2377,7 @@ func (lc *LightningChannel) getSignedCommitTx() (*wire.MsgTx, error) {
 	ourKey := lc.channelState.OurMultiSigKey.SerializeCompressed()
 	theirKey := lc.channelState.TheirMultiSigKey.SerializeCompressed()
 
-	commitTx.TxIn[0].Witness = SpendMultiSig(lc.FundingWitnessScript, ourKey,
+	commitTx.TxIn[0].SignatureScript= SpendMultiSig(lc.FundingWitnessScript, ourKey,
 		ourSig, theirKey, theirSig)
 
 	return commitTx, nil
@@ -2464,7 +2462,7 @@ func (lc *LightningChannel) ForceClose() (*ForceCloseSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	payToUsScriptHash, err := witnessScriptHash(selfScript)
+	payToUsScriptHash, err := p2ScriptHash(selfScript)
 	if err != nil {
 		return nil, err
 	}
@@ -2495,7 +2493,7 @@ func (lc *LightningChannel) ForceClose() (*ForceCloseSummary, error) {
 	if len(delayScript) != 0 {
 		selfSignDesc = &SignDescriptor{
 			PubKey:        selfKey,
-			WitnessScript: selfScript,
+			P2SHScript: selfScript,
 			Output: &wire.TxOut{
 				PkScript: delayScript,
 				Value:    int64(lc.channelState.OurBalance),
@@ -2536,6 +2534,8 @@ func (lc *LightningChannel) ForceClose() (*ForceCloseSummary, error) {
 //
 // TODO(roasbeef): caller should initiate signal to reject all incoming HTLCs,
 // settle any inflight.
+// TODO(mkl): in NOSEGWIT mode it will not work because transaction hash depends on
+// signatures
 func (lc *LightningChannel) InitCooperativeClose() ([]byte, *chainhash.Hash, error) {
 	lc.Lock()
 	defer lc.Unlock()
@@ -2574,7 +2574,6 @@ func (lc *LightningChannel) InitCooperativeClose() ([]byte, *chainhash.Hash, err
 	// initiator we'll simply send our signature over to the remote party,
 	// using the generated txid to be notified once the closure transaction
 	// has been confirmed.
-	lc.signDesc.SigHashes = txscript.NewTxSigHashes(closeTx)
 	closeSig, err := lc.signer.SignOutputRaw(closeTx, lc.signDesc)
 	if err != nil {
 		return nil, nil, err
@@ -2636,8 +2635,6 @@ func (lc *LightningChannel) CompleteCooperativeClose(remoteSig []byte) (*wire.Ms
 
 	// With the transaction created, we can finally generate our half of
 	// the 2-of-2 multi-sig needed to redeem the funding output.
-	hashCache := txscript.NewTxSigHashes(closeTx)
-	lc.signDesc.SigHashes = hashCache
 	closeSig, err := lc.signer.SignOutputRaw(closeTx, lc.signDesc)
 	if err != nil {
 		return nil, err
@@ -2648,15 +2645,14 @@ func (lc *LightningChannel) CompleteCooperativeClose(remoteSig []byte) (*wire.Ms
 	ourKey := lc.channelState.OurMultiSigKey.SerializeCompressed()
 	theirKey := lc.channelState.TheirMultiSigKey.SerializeCompressed()
 	ourSig := append(closeSig, byte(txscript.SigHashAll))
-	witness := SpendMultiSig(lc.signDesc.WitnessScript, ourKey, ourSig,
+	unlockScript := SpendMultiSig(lc.signDesc.P2SHScript, ourKey, ourSig,
 		theirKey, remoteSig)
-	closeTx.TxIn[0].Witness = witness
+	closeTx.TxIn[0].SignatureScript = unlockScript
 
 	// Validate the finalized transaction to ensure the output script is
 	// properly met, and that the remote peer supplied a valid signature.
 	vm, err := txscript.NewEngine(lc.fundingP2WSH, closeTx, 0,
-		txscript.StandardVerifyFlags, nil, hashCache,
-		int64(lc.channelState.Capacity))
+		txscript.StandardVerifyFlags, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2707,7 +2703,7 @@ func CreateCommitTx(fundingOutput *wire.TxIn, selfKey, theirKey *btcec.PublicKey
 	if err != nil {
 		return nil, err
 	}
-	payToUsScriptHash, err := witnessScriptHash(ourRedeemScript)
+	payToUsScriptHash, err := p2ScriptHash(ourRedeemScript)
 	if err != nil {
 		return nil, err
 	}

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // ErrNotMine is an error denoting that a WalletController instance is unable
@@ -112,7 +112,7 @@ type WalletController interface {
 	// that have at least confs confirmations. If confs is set to zero,
 	// then all unspent outputs, including those currently in the mempool
 	// will be included in the final sum.
-	ConfirmedBalance(confs int32, witness bool) (btcutil.Amount, error)
+	ConfirmedBalance(confs int32) (btcutil.Amount, error)
 
 	// NewAddress returns the next external or internal address for the
 	// wallet dictated by the value of the `change` parameter. If change is
@@ -148,12 +148,11 @@ type WalletController interface {
 	// should be returned.
 	SendOutputs(outputs []*wire.TxOut) (*chainhash.Hash, error)
 
-	// ListUnspentWitness returns all unspent outputs which are version 0
-	// witness programs. The 'confirms' parameter indicates the minimum
+	// ListUnspen returns all unspent output. The 'confirms' parameter indicates the minimum
 	// number of confirmations an output needs in order to be returned by
 	// this method. Passing -1 as 'confirms' indicates that even
 	// unconfirmed outputs should be returned.
-	ListUnspentWitness(confirms int32) ([]*Utxo, error)
+	ListUnspent(confirms int32) ([]*Utxo, error)
 
 	// ListTransactionDetails returns a list of all transactions which are
 	// relevant to the wallet.
@@ -247,10 +246,10 @@ type SignDescriptor struct {
 	// the above public key.
 	PrivateTweak []byte
 
-	// WitnessScript is the full script required to properly redeem the
-	// output. This field will only be populated if a p2wsh or a p2sh
+	// P2SHScript is the full script required to properly redeem the
+	// output. This field will only be populated if a p2sh
 	// output is being signed.
-	WitnessScript []byte
+	P2SHScript []byte
 
 	// Output is the target output which should be signed. The PkScript and
 	// Value fields within the output should be properly populated,
@@ -261,9 +260,6 @@ type SignDescriptor struct {
 	// generating the final sighash, and signature.
 	HashType txscript.SigHashType
 
-	// SigHashes is the pre-computed sighash midstate to be used when
-	// generating the final sighash for signing.
-	SigHashes *txscript.TxSigHashes
 
 	// InputIndex is the target input within the transaction that should be
 	// signed.

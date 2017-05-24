@@ -24,16 +24,16 @@ import (
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing"
 	"github.com/lightningnetwork/lnd/zpay32"
-	"github.com/roasbeef/btcd/blockchain"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
-	"github.com/roasbeef/btcwallet/waddrmgr"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/tv42/zbase32"
 	"golang.org/x/net/context"
+	"github.com/lightningnetwork/lnd/chainntnfs"
 )
 
 var (
@@ -549,7 +549,6 @@ func (r *rpcServer) CloseChannel(in *lnrpc.CloseChannelRequest,
 		updateChan chan *lnrpc.CloseStatusUpdate
 		errChan    chan error
 	)
-
 	// If a force closure was requested, then we'll handle all the details
 	// around the creation and broadcast of the unilateral closure
 	// transaction here rather than going to the switch as we don't require
@@ -607,13 +606,13 @@ func (r *rpcServer) CloseChannel(in *lnrpc.CloseChannelRequest,
 		errChan = make(chan error, 1)
 		notifier := r.server.chainNotifier
 		go waitForChanToClose(uint32(bestHeight), notifier, errChan, chanPoint,
-			closingTxid, func() {
+			closingTxid, func(detail *chainntnfs.SpendDetail) {
 				// Respond to the local subsystem which
 				// requested the channel closure.
 				updateChan <- &lnrpc.CloseStatusUpdate{
 					Update: &lnrpc.CloseStatusUpdate_ChanClose{
 						ChanClose: &lnrpc.ChannelCloseUpdate{
-							ClosingTxid: closingTxid[:],
+							ClosingTxid: detail.SpenderTxHash.CloneBytes(),
 							Success:     true,
 						},
 					},
@@ -623,6 +622,7 @@ func (r *rpcServer) CloseChannel(in *lnrpc.CloseChannelRequest,
 		// TODO(roasbeef): utxo nursery marks as fully closed
 
 	} else {
+
 		// Otherwise, the caller has requested a regular interactive
 		// cooperative channel closure. So we'll forward the request to
 		// the htlc switch which will handle the negotiation and
@@ -638,6 +638,7 @@ out:
 				"ChannelPoint(%v): %v", chanPoint, err)
 			return err
 		case closingUpdate := <-updateChan:
+
 			rpcsLog.Tracef("[closechannel] sending update: %v",
 				closingUpdate)
 			if err := updateStream.Send(closingUpdate); err != nil {
@@ -658,7 +659,6 @@ out:
 			return nil
 		}
 	}
-
 	return nil
 }
 
@@ -853,7 +853,7 @@ func (r *rpcServer) ListPeers(ctx context.Context,
 func (r *rpcServer) WalletBalance(ctx context.Context,
 	in *lnrpc.WalletBalanceRequest) (*lnrpc.WalletBalanceResponse, error) {
 
-	balance, err := r.server.lnwallet.ConfirmedBalance(1, in.WitnessOnly)
+	balance, err := r.server.lnwallet.ConfirmedBalance(1)
 	if err != nil {
 		return nil, err
 	}
@@ -915,8 +915,9 @@ func (r *rpcServer) PendingChannels(ctx context.Context,
 		// broadcast.
 		// TODO(roasbeef): query for funding tx from wallet, display
 		// that also?
-		utx := btcutil.NewTx(pendingChan.OurCommitTx)
-		commitBaseWeight := blockchain.GetTransactionWeight(utx)
+		//utx := btcutil.NewTx(pendingChan.OurCommitTx)
+		// TODO(mkl): !!! set size of the transaction
+		commitBaseWeight := int64(500)
 		commitWeight := commitBaseWeight + lnwallet.WitnessCommitmentTxWeight
 
 		resp.PendingOpenChannels[i] = &lnrpc.PendingChannelResponse_PendingOpenChannel{
@@ -1061,8 +1062,9 @@ func (r *rpcServer) ListChannels(ctx context.Context,
 		// estimated weight of the witness to calculate the weight of
 		// the transaction if it were to be immediately unilaterally
 		// broadcast.
-		utx := btcutil.NewTx(dbChannel.OurCommitTx)
-		commitBaseWeight := blockchain.GetTransactionWeight(utx)
+		//utx := btcutil.NewTx(dbChannel.OurCommitTx)
+		// TODO(mkl): !!! add normal calculation of transaction weight
+		commitBaseWeight := int64(500)
 		commitWeight := commitBaseWeight + lnwallet.WitnessCommitmentTxWeight
 
 		channel := &lnrpc.ActiveChannel{

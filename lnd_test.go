@@ -21,12 +21,12 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/rpctest"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcrpcclient"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/integration/rpctest"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcrpcclient"
+	"github.com/btcsuite/btcutil"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -208,17 +208,15 @@ func closeChannelAndAssert(ctx context.Context, t *harnessTest, net *networkHarn
 		}
 	}
 
-	// Finally, generate a single block, wait for the final close status
-	// update, then ensure that the closing transaction was included in the
-	// block.
 	block := mineBlocks(t, net, 1)[0]
 
 	closingTxid, err := net.WaitForChannelClose(ctx, closeUpdates)
 	if err != nil {
 		t.Fatalf("error while waiting for channel close: %v", err)
 	}
-
-	assertTxInBlock(t, block, closingTxid)
+	// TODO(mkl): implement correct validation
+	// NOSEG
+	 assertTxInBlock(t, block, closingTxid)
 
 	return closingTxid
 }
@@ -306,7 +304,7 @@ func calcStaticFee(numHTLCs int) btcutil.Amount {
 // conditions. Finally, the chain itself is checked to ensure the closing
 // transaction was mined.
 func testBasicChannelFunding(net *networkHarness, t *harnessTest) {
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 	ctxb := context.Background()
 
 	chanAmt := btcutil.Amount(btcutil.SatoshiPerBitcoin / 2)
@@ -322,7 +320,7 @@ func testBasicChannelFunding(net *networkHarness, t *harnessTest) {
 	chanPoint := openChannelAndAssert(ctxt, t, net, net.Alice, net.Bob,
 		chanAmt, pushAmt)
 
-	ctxt, _ = context.WithTimeout(ctxb, time.Second*15)
+	ctxt, _ = context.WithTimeout(ctxb, time.Second*15*timeoutCoef)
 	err := net.Alice.WaitForNetworkChannelOpen(ctxt, chanPoint)
 	if err != nil {
 		t.Fatalf("alice didn't report channel: %v", err)
@@ -367,7 +365,7 @@ func testDisconnectingTargetPeer(net *networkHarness, t *harnessTest) {
 	chanAmt := btcutil.Amount(btcutil.SatoshiPerBitcoin / 2)
 	pushAmt := btcutil.Amount(0)
 
-	timeout := time.Duration(time.Second * 10)
+	timeout := time.Duration(time.Second * 10 * timeoutCoef)
 	ctxt, _ := context.WithTimeout(ctxb, timeout)
 
 	// Create a new channel that requires 1 confs before it's considered
@@ -409,7 +407,7 @@ func testDisconnectingTargetPeer(net *networkHarness, t *harnessTest) {
 
 	// At this point, the channel should be fully opened and there should
 	// be no pending channels remaining for either node.
-	time.Sleep(time.Millisecond * 3000)
+	time.Sleep(time.Millisecond * 3000 * timeoutCoef)
 	ctxt, _ = context.WithTimeout(ctxb, timeout)
 
 	assertNumOpenChannelsPending(ctxt, t, net.Alice, net.Bob, 0)
@@ -482,7 +480,7 @@ func testChannelFundingPersistence(net *networkHarness, t *harnessTest) {
 	chanAmt := btcutil.Amount(btcutil.SatoshiPerBitcoin / 2)
 	pushAmt := btcutil.Amount(0)
 
-	timeout := time.Duration(time.Second * 10)
+	timeout := time.Duration(time.Second * 10 * timeoutCoef)
 	ctxt, _ := context.WithTimeout(ctxb, timeout)
 
 	// Create a new channel that requires 5 confs before it's considered
@@ -532,7 +530,7 @@ func testChannelFundingPersistence(net *networkHarness, t *harnessTest) {
 
 	// The following block ensures that after both nodes have restarted,
 	// they have reconnected before the execution of the next test.
-	peersTimeout := time.After(15 * time.Second)
+	peersTimeout := time.After(15 * time.Second * timeoutCoef)
 	checkPeersTick := time.NewTicker(100 * time.Millisecond)
 	defer checkPeersTick.Stop()
 peersPoll:
@@ -559,7 +557,7 @@ peersPoll:
 	}
 
 	// Both nodes should still show a single channel as pending.
-	time.Sleep(time.Millisecond * 300)
+	time.Sleep(time.Millisecond * 300 * timeoutCoef)
 	ctxt, _ = context.WithTimeout(ctxb, timeout)
 	assertNumOpenChannelsPending(ctxt, t, net.Alice, net.Bob, 1)
 
@@ -570,7 +568,7 @@ peersPoll:
 
 	// At this point, the channel should be fully opened and there should
 	// be no pending channels remaining for either node.
-	time.Sleep(time.Millisecond * 300)
+	time.Sleep(time.Millisecond * 300 * timeoutCoef)
 	ctxt, _ = context.WithTimeout(ctxb, timeout)
 	assertNumOpenChannelsPending(ctxt, t, net.Alice, net.Bob, 0)
 
@@ -605,7 +603,7 @@ peersPoll:
 // testChannelBalance creates a new channel between Alice and  Bob, then
 // checks channel balance to be equal amount specified while creation of channel.
 func testChannelBalance(net *networkHarness, t *harnessTest) {
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 
 	// Open a channel with 0.5 BTC between Alice and Bob, ensuring the
 	// channel has been opened properly.
@@ -671,7 +669,7 @@ func testChannelBalance(net *networkHarness, t *harnessTest) {
 //
 // TODO(roasbeef): also add an unsettled HTLC before force closing.
 func testChannelForceClosure(net *networkHarness, t *harnessTest) {
-	timeout := time.Duration(time.Second * 10)
+	timeout := time.Duration(time.Second * 10 * timeoutCoef)
 	ctxb := context.Background()
 
 	// Before we start, obtain Bob's current wallet balance, we'll check to
@@ -765,7 +763,7 @@ func testChannelForceClosure(net *networkHarness, t *harnessTest) {
 	// operation upon restart. This will change the blockheights from what
 	// is expected by the test.
 	// TODO(bvu): refactor out this sleep.
-	duration := time.Millisecond * 300
+	duration := time.Millisecond * 300 * timeoutCoef
 	time.Sleep(duration)
 
 	// Now that the channel has been force closed, it should now have the
@@ -819,7 +817,7 @@ func testChannelForceClosure(net *networkHarness, t *harnessTest) {
 	// broadcast.
 	var sweepingTXID *chainhash.Hash
 	var mempool []*chainhash.Hash
-	mempoolTimeout := time.After(3 * time.Second)
+	mempoolTimeout := time.After(3 * time.Second * timeoutCoef)
 	checkMempoolTick := time.NewTicker(100 * time.Millisecond)
 	defer checkMempoolTick.Stop()
 mempoolPoll:
@@ -878,7 +876,7 @@ mempoolPoll:
 
 	// Now that the channel has been fully swept, it should no longer show
 	// up within the pending channels RPC.
-	time.Sleep(time.Millisecond * 300)
+	time.Sleep(time.Millisecond * 300 * timeoutCoef)
 	pendingChans, err := net.Alice.PendingChannels(ctxb, pendingChansRequest)
 	if err != nil {
 		t.Fatalf("unable to query for pending channels: %v", err)
@@ -903,7 +901,7 @@ mempoolPoll:
 
 func testSingleHopInvoice(net *networkHarness, t *harnessTest) {
 	ctxb := context.Background()
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 
 	// Open a channel with 100k satoshis between Alice and Bob with Alice being
 	// the sole funder of the channel.
@@ -1001,7 +999,7 @@ func testSingleHopInvoice(net *networkHarness, t *harnessTest) {
 
 	// With the payment completed all balance related stats should be
 	// properly updated.
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 200 * timeoutCoef)
 	assertAmountSent(paymentAmt)
 
 	// Create another invoice for Bob, this time leaving off the preimage
@@ -1029,7 +1027,7 @@ func testSingleHopInvoice(net *networkHarness, t *harnessTest) {
 
 	// The second payment should also have succeeded, with the balances
 	// being update accordingly.
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 200 * timeoutCoef)
 	assertAmountSent(paymentAmt * 2)
 
 	ctxt, _ = context.WithTimeout(ctxb, timeout)
@@ -1038,7 +1036,7 @@ func testSingleHopInvoice(net *networkHarness, t *harnessTest) {
 
 func testListPayments(net *networkHarness, t *harnessTest) {
 	ctxb := context.Background()
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 
 	// First start by deleting all payments that Alice knows of. This will
 	// allow us to execute the test with a clean state for Alice.
@@ -1175,7 +1173,7 @@ func testListPayments(net *networkHarness, t *harnessTest) {
 func testMultiHopPayments(net *networkHarness, t *harnessTest) {
 	const chanAmt = btcutil.Amount(100000)
 	ctxb := context.Background()
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 
 	// Open a channel with 100k satoshis between Alice and Bob with Alice
 	// being the sole funder of the channel.
@@ -1284,7 +1282,7 @@ func testMultiHopPayments(net *networkHarness, t *harnessTest) {
 	}()
 
 	select {
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 10 * timeoutCoef):
 		t.Fatalf("HTLCs not cleared after 10 seconds")
 	case <-finClear:
 	}
@@ -1341,7 +1339,7 @@ func testMultiHopPayments(net *networkHarness, t *harnessTest) {
 		// are in place
 		var timeover uint32
 		go func() {
-			<-time.After(time.Second * 20)
+			<-time.After(time.Second * 20 * timeoutCoef)
 			atomic.StoreUint32(&timeover, 1)
 		}()
 
@@ -1384,7 +1382,7 @@ func testMultiHopPayments(net *networkHarness, t *harnessTest) {
 func testInvoiceSubscriptions(net *networkHarness, t *harnessTest) {
 	const chanAmt = btcutil.Amount(500000)
 	ctxb := context.Background()
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 
 	// Open a channel with 500k satoshis between Alice and Bob with Alice
 	// being the sole funder of the channel.
@@ -1464,7 +1462,7 @@ func testInvoiceSubscriptions(net *networkHarness, t *harnessTest) {
 	}
 
 	select {
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * 5 * timeoutCoef):
 		t.Fatalf("update not sent after 5 seconds")
 	case <-updateSent: // Fall through on success
 	}
@@ -1477,7 +1475,7 @@ func testInvoiceSubscriptions(net *networkHarness, t *harnessTest) {
 func testBasicChannelCreation(net *networkHarness, t *harnessTest) {
 	const (
 		numChannels = 2
-		timeout     = time.Duration(time.Second * 5)
+		timeout     = time.Duration(time.Second * 5 * timeoutCoef)
 		amount      = btcutil.Amount(btcutil.SatoshiPerBitcoin)
 	)
 
@@ -1505,7 +1503,7 @@ func testMaxPendingChannels(net *networkHarness, t *harnessTest) {
 	maxPendingChannels := defaultMaxPendingChannels + 1
 	amount := btcutil.Amount(btcutil.SatoshiPerBitcoin)
 
-	timeout := time.Duration(time.Second * 10)
+	timeout := time.Duration(time.Second * 10 * timeoutCoef)
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 
 	// Create a new node (Carol) with greater number of max pending
@@ -1637,7 +1635,7 @@ func copyFile(dest, src string) error {
 func testRevokedCloseRetribution(net *networkHarness, t *harnessTest) {
 	ctxb := context.Background()
 	const (
-		timeout     = time.Duration(time.Second * 5)
+		timeout     = time.Duration(time.Second * 5 * timeoutCoef)
 		chanAmt     = btcutil.Amount(btcutil.SatoshiPerBitcoin / 2)
 		paymentAmt  = 10000
 		numInvoices = 6
@@ -1724,7 +1722,7 @@ func testRevokedCloseRetribution(net *networkHarness, t *harnessTest) {
 
 	// Next query for Bob's channel state, as we sent 3 payments of 10k
 	// satoshis each, Bob should now see his balance as being 30k satoshis.
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 200 * timeoutCoef)
 	bobChan, err := getBobChanInfo()
 	if err != nil {
 		t.Fatalf("unable to get bob's channel info: %v", err)
@@ -1798,7 +1796,7 @@ func testRevokedCloseRetribution(net *networkHarness, t *harnessTest) {
 	// broadcast as Bob's contract breaching transaction gets confirmed
 	// above.
 	var justiceTXID *chainhash.Hash
-	breakTimeout := time.After(time.Second * 5)
+	breakTimeout := time.After(time.Second * 5 * timeoutCoef)
 poll:
 	for {
 		select {
@@ -1866,7 +1864,7 @@ func testHtlcErrorPropagation(net *networkHarness, t *harnessTest) {
 	// In this test we wish to exercise the daemon's correct parsing,
 	// handling, and propagation of errors that occur while processing a
 	// multi-hop payment.
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 	ctxb := context.Background()
 
 	const chanAmt = btcutil.Amount(btcutil.SatoshiPerBitcoin / 2)
@@ -1925,7 +1923,7 @@ func testHtlcErrorPropagation(net *networkHarness, t *harnessTest) {
 	nodeInfoReq := &lnrpc.NodeInfoRequest{
 		PubKey: carol.PubKeyStr,
 	}
-	checkTableTimeout := time.After(time.Second * 10)
+	checkTableTimeout := time.After(time.Second * 10 * timeoutCoef)
 	checkTableTicker := time.NewTicker(100 * time.Millisecond)
 	defer checkTableTicker.Stop()
 
@@ -2098,7 +2096,7 @@ out:
 	if err := carol.Shutdown(); err != nil {
 		t.Fatalf("unable to shutdown carol: %v", err)
 	}
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 2 * timeoutCoef)
 	alicePayStream, err = net.Alice.SendPayment(ctxb)
 	if err != nil {
 		t.Fatalf("unable to create payment stream: %v", err)
@@ -2134,7 +2132,7 @@ out:
 
 func testGraphTopologyNotifications(net *networkHarness, t *harnessTest) {
 	const chanAmt = btcutil.Amount(btcutil.SatoshiPerBitcoin / 2)
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 	ctxb := context.Background()
 
 	// We'll first start by establishing a notification client to Alice
@@ -2206,7 +2204,7 @@ func testGraphTopologyNotifications(net *networkHarness, t *harnessTest) {
 				t.Fatalf("unknown connecting node: %v",
 					chanUpdate.ConnectingNode)
 			}
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 10 * timeoutCoef):
 			t.Fatalf("notification for new channel not sent")
 		}
 	}
@@ -2245,7 +2243,7 @@ func testGraphTopologyNotifications(net *networkHarness, t *harnessTest) {
 			t.Fatalf("output index mismatch: expected %v, got %v",
 				chanPoint.OutputIndex, closedChan.ChanPoint)
 		}
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 10 * timeoutCoef):
 		t.Fatalf("notification for channel closure not " +
 			"sent")
 	}
@@ -2277,7 +2275,7 @@ func testGraphTopologyNotifications(net *networkHarness, t *harnessTest) {
 			t.Fatalf("node update pubkey mismatch: expected %v, got %v",
 				carol.PubKeyStr, nodeUpdate.IdentityKey)
 		}
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 10 * timeoutCoef):
 		t.Fatalf("node update ntfn not sent")
 	}
 
@@ -2314,7 +2312,7 @@ func testNodeAnnouncement(net *networkHarness, t *harnessTest) {
 		t.Fatalf("unable to connect bob to carol: %v", err)
 	}
 
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 200 * timeoutCoef)
 	req := &lnrpc.ChannelGraphRequest{}
 	chanGraph, err := net.Alice.DescribeGraph(ctxb, req)
 	if err != nil {
@@ -2352,7 +2350,7 @@ func testNodeAnnouncement(net *networkHarness, t *harnessTest) {
 }
 
 func testNodeSignVerify(net *networkHarness, t *harnessTest) {
-	timeout := time.Duration(time.Second * 5)
+	timeout := time.Duration(time.Second * 5 * timeoutCoef)
 	ctxb := context.Background()
 
 	chanAmt := btcutil.Amount(btcutil.SatoshiPerBitcoin / 2)
@@ -2432,67 +2430,83 @@ type testCase struct {
 }
 
 var testsCases = []*testCase{
+	 //NOSEG: PASS
 	{
 		name: "basic funding flow",
 		test: testBasicChannelFunding,
 	},
+	 //NOSEG: PASS
 	{
 		name: "disconnecting target peer",
 		test: testDisconnectingTargetPeer,
 	},
+	 //NOSEG: PASS
 	{
 		name: "graph topology notifications",
 		test: testGraphTopologyNotifications,
 	},
+	 //NOSEG: PASS
 	{
 		name: "funding flow persistence",
 		test: testChannelFundingPersistence,
 	},
+	 // NOSEG: PASS
 	{
 		name: "channel force closure",
 		test: testChannelForceClosure,
 	},
+	 // NOSEG: PASS
 	{
 		name: "channel balance",
 		test: testChannelBalance,
 	},
+	 // NOSEG: PASS
 	{
 		name: "single hop invoice",
 		test: testSingleHopInvoice,
 	},
+	 // NOSEG: PASS
 	{
 		name: "list outgoing payments",
 		test: testListPayments,
 	},
+	 // NOSEG: PASS
 	{
 		name: "max pending channel",
 		test: testMaxPendingChannels,
 	},
+	 // NOSEG: PASS
 	{
 		name: "multi-hop payments",
 		test: testMultiHopPayments,
 	},
+	 // NOSEG: PASS
 	{
 		name: "multiple channel creation",
 		test: testBasicChannelCreation,
 	},
+	 // NOSEG: PASS
 	{
 		name: "invoice update subscription",
 		test: testInvoiceSubscriptions,
 	},
+	 // NOSEG: PASS
 	{
 		name: "multi-hop htlc error propagation",
 		test: testHtlcErrorPropagation,
 	},
 	// TODO(roasbeef): multi-path integration test
+	 // NOSEG: PASS
 	{
 		name: "node announcement",
 		test: testNodeAnnouncement,
 	},
+	 // NOSEG: PASS
 	{
 		name: "node sign verify",
 		test: testNodeSignVerify,
 	},
+	 // NOSEG: PASS
 	{
 		// TODO(roasbeef): test always needs to be last as Bob's state
 		// is borked since we trick him into attempting to cheat Alice?

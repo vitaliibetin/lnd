@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/roasbeef/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 // ChannelAnnouncement message is used to announce the existence of a channel

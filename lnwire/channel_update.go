@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/roasbeef/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 // ChannelUpdate message is used after channel has been initially announced.

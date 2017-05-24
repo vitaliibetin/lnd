@@ -13,8 +13,9 @@ import:
   subpackages:
   - proto
 - package: github.com/howeyc/gopass
-- package: github.com/roasbeef/btcd
-  version: 54362e17a5b80643ef1e12edc08895a2e2a1202b
+- package: github.com/btcsuite/btcd
+  repo: https://github.com/BitfuryLightning/btcd
+  version: 20ef881af9e83140553b9815a33db2642d70a372
   subpackages:
   - blockchain
   - btcec
@@ -23,17 +24,18 @@ import:
   - txscript
   - wire
   - connmgr
-- package: github.com/roasbeef/btcrpcclient
-  version: master
-- package: github.com/roasbeef/btcutil
-  version: master
+- package: github.com/btcsuite/btcrpcclient
+  version: e3e4c726af933ac58e84935fd26b2aa9939fefaf
+- package: github.com/btcsuite/btcutil
+  version: 66871daeb12123ece012a9628d2798d01195c4b3
   subpackages:
   - bloom
   - coinset
   - hdkeychain
   - txsort
-- package: github.com/roasbeef/btcwallet
-  version: 689fccd15fdf3c01cd35734ffe12409bc35a343b
+- package: github.com/btcsuite/btcwallet
+  repo: https://github.com/BitfuryLightning/btcwallet
+  version: b94d2b28100c9150a7e4bbb375b077f5a50d5898
   subpackages:
   - chain
   - waddrmgr
@@ -55,7 +57,8 @@ import:
 - package: google.golang.org/grpc
   version: 8050b9cbc271307e5a716a9d782803d09b0d6f2d
 - package: github.com/lightningnetwork/lightning-onion
-  version: 0dd00eb9c6ffcefea7d3c6d6e502df218f49e228
+  repo: https://github.com/BitfuryLightning/lightning-onion
+  version: 765820b6b893aa1ff027825b764e1dde4424ea94
 - package: github.com/grpc-ecosystem/grpc-gateway
   version: 1.1.0
 - package: github.com/go-errors/errors

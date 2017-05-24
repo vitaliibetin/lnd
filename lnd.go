@@ -25,7 +25,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
 	"github.com/lightningnetwork/lnd/routing/chainview"
 
-	"github.com/roasbeef/btcrpcclient"
+	"github.com/btcsuite/btcrpcclient"
 )
 
 var (

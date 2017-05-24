@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/lightningnetwork/lnd/chainntnfs"
-	"github.com/roasbeef/btcd/btcjson"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcrpcclient"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcrpcclient"
+	"github.com/btcsuite/btcutil"
 )
 
 const (
@@ -636,6 +636,7 @@ func (b *BtcdNotifier) RegisterSpendNtfn(outpoint *wire.OutPoint,
 	// is no longer in the UTXO set, the chain will be rescanned from the point
 	// where the output was added. The rescan will dispatch the notification.
 	txout, err := b.chainConn.GetTxOut(&outpoint.Hash, outpoint.Index, true)
+
 	if err != nil {
 		return nil, err
 	}
@@ -647,6 +648,7 @@ func (b *BtcdNotifier) RegisterSpendNtfn(outpoint *wire.OutPoint,
 		}
 
 		blockhash, err := chainhash.NewHashFromStr(transaction.BlockHash)
+
 		if err != nil {
 			return nil, err
 		}
