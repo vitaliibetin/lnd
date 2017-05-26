@@ -26,7 +26,7 @@ import (
 
 	"github.com/roasbeef/btcrpcclient"
 	"time"
-	"strings"
+	// "strings"
 	"github.com/dgrijalva/jwt-go"
 )
 
