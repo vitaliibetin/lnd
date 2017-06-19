@@ -80,7 +80,7 @@ func (h *harnessTest) RunTestCase(testCase *testCase, net *networkHarness) {
 	}()
 
 	testCase.test(net, h)
-	h.t.Logf("Passed: (%v)", h.testCase.name)
+
 	return
 }
 
@@ -2588,7 +2588,14 @@ func TestLightningNetworkDaemon(t *testing.T) {
 
 	t.Logf("Running %v integration tests", len(testsCases))
 	for _, testCase := range testsCases {
-		ht.RunTestCase(testCase, lndHarness)
+		success := t.Run(testCase.name, func(t1 *testing.T) {
+			ht := newHarnessTest(t1)
+			ht.RunTestCase(testCase, lndHarness)
+		})
+		// Stop at the first failure. Mimic behavior of original test
+		if !success {
+			break
+		}
 	}
 
 	close(testsFin)
