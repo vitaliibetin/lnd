@@ -1266,7 +1266,7 @@ func (f *fundingManager) handleInitFundingMsg(msg *initFundingMsg) {
 		chanID,
 		msg.channelType,
 		msg.coinType,
-		0, // TODO(roasbeef): grab from fee estimation model
+		100000, // TODO(roasbeef): grab from fee estimation model
 		capacity,
 		contribution.CsvDelay,
 		contribution.CommitKey,

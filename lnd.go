@@ -227,9 +227,21 @@ func lndMain() error {
 	if err != nil {
 		return err
 	}
+	allowCORSMiddleware := func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request){
+			if req.Method == "OPTIONS" {
+				resp.Header().Set("Access-Control-Allow-Origin", "*")
+				resp.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+				resp.Header().Set("Access-Control-Allow-Headers", "Authorization")
+			} else {
+				resp.Header().Set("Access-Control-Allow-Origin", "*")
+				h.ServeHTTP(resp, req)
+			}
+		})
+	}
 	go func() {
 		rpcsLog.Infof("gRPC proxy started")
-		http.ListenAndServe(":8080", mux)
+		http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", loadedConfig.HTTPPort), allowCORSMiddleware(mux))
 	}()
 
 	// Wait for shutdown signal from either a graceful server stop or from

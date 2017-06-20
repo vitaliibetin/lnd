@@ -634,6 +634,7 @@ func getInfo(ctx *cli.Context) error {
 		return err
 	}
 
+	resp.Testnet=false
 	printRespJSON(resp)
 	return nil
 }

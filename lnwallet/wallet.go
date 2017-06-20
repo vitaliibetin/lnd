@@ -543,7 +543,7 @@ func (l *LightningWallet) handleFundingReserveRequest(req *initFundingReserveMsg
 	if req.fundingAmount != 0 {
 		// TODO(roasbeef): consult model for proper fee rate on funding
 		// tx
-		feeRate := uint64(10)
+		feeRate := uint64(500)
 		amt := req.fundingAmount + commitFee
 		err := l.selectCoinsAndChange(feeRate, amt, ourContribution)
 		if err != nil {

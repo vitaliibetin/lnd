@@ -41,7 +41,7 @@ var bitcoinSimNetParams = bitcoinNetParams{
 // liteTestNetParams contains parameters specific to the 4th version of the
 // test network.
 var liteTestNetParams = litecoinNetParams{
-	Params:  &litecoinCfg.TestNet4Params,
+	Params:  &litecoinCfg.MainNetParams,
 	rpcPort: "19334",
 }
 
