@@ -360,6 +360,8 @@ message OpenChannelRequest {
     int64 push_sat = 5 [ json_name = "push_sat" ];
 
     uint32 num_confs = 6 [ json_name = "num_confs" ];
+
+    uint32 fee_per_byte = 7 [ json_name = "fee_per_byte" ];
 }
 message OpenStatusUpdate {
     oneof update {

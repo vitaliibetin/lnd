@@ -519,10 +519,14 @@ func (f *fundingManager) handleFundingRequest(fmsg *fundingRequestMsg) {
 	// funds to the channel ourselves.
 	// TODO(roasbeef): assuming this was an inbound connection, replace
 	// port with default advertised port
+
+	// EVG: Last argument will never use, because we use SingleFunding channel type
+	// and in this case responder doesn't pay any fee
+	feePerByte := uint32(0)
 	reservation, err := f.cfg.Wallet.InitChannelReservation(amt, 0,
 		fmsg.peerAddress.IdentityKey, fmsg.peerAddress.Address,
 		uint16(fmsg.msg.ConfirmationDepth), delay, ourDustLimit,
-		msg.PushSatoshis)
+		msg.PushSatoshis, feePerByte)
 	if err != nil {
 		// TODO(roasbeef): push ErrorGeneric message
 		fndgLog.Errorf("Unable to initialize reservation: %v", err)
@@ -1220,7 +1224,7 @@ func (f *fundingManager) handleInitFundingMsg(msg *initFundingMsg) {
 	// the request will fail, and be aborted.
 	reservation, err := f.cfg.Wallet.InitChannelReservation(capacity,
 		localAmt, peerKey, msg.peerAddress.Address, uint16(numConfs), 4,
-		ourDustLimit, msg.pushAmt)
+		ourDustLimit, msg.pushAmt, msg.feePerByte)
 	if err != nil {
 		msg.err <- err
 		return

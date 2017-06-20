@@ -303,7 +303,7 @@ func (r *rpcServer) OpenChannel(in *lnrpc.OpenChannelRequest,
 	// open a new channel. A stream is returned in place, this stream will
 	// be used to consume updates of the state of the pending channel.
 	updateChan, errChan := r.server.OpenChannel(in.TargetPeerId,
-		nodePubKey, localFundingAmt, remoteInitialBalance, in.NumConfs)
+		nodePubKey, localFundingAmt, remoteInitialBalance, in.NumConfs, in.FeePerByte)
 
 	var outpoint wire.OutPoint
 out:
@@ -391,7 +391,7 @@ func (r *rpcServer) OpenChannelSync(ctx context.Context,
 	}
 
 	updateChan, errChan := r.server.OpenChannel(in.TargetPeerId,
-		nodepubKey, localFundingAmt, remoteInitialBalance, in.NumConfs)
+		nodepubKey, localFundingAmt, remoteInitialBalance, in.NumConfs, in.FeePerByte)
 
 	select {
 	// If an error occurs them immediately return the error to the client.

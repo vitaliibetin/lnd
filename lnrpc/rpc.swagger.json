@@ -1355,6 +1355,10 @@
         "num_confs": {
           "type": "integer",
           "format": "int64"
+        },
+        "fee_per_byte": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },

@@ -291,6 +291,10 @@ var openChannelCommand = cli.Command{
 			Name:  "block",
 			Usage: "block and wait until the channel is fully open",
 		},
+		cli.IntFlag{
+			Name:  "fee_per_byte",
+			Usage: "fee per byte for funding(opening) transaction",
+		},
 	},
 	Action: openChannel,
 }
@@ -316,7 +320,8 @@ func openChannel(ctx *cli.Context) error {
 	}
 
 	req := &lnrpc.OpenChannelRequest{
-		NumConfs: uint32(ctx.Int("num_confs")),
+		NumConfs:   uint32(ctx.Int("num_confs")),
+		FeePerByte: uint32(ctx.Int("fee_per_byte")),
 	}
 
 	switch {

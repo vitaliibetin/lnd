@@ -969,7 +969,8 @@ type openChanReq struct {
 
 	pushAmt btcutil.Amount
 
-	numConfs uint32
+	numConfs   uint32
+	feePerByte uint32
 
 	updates chan *lnrpc.OpenStatusUpdate
 	err     chan error
@@ -1218,7 +1219,7 @@ func (s *server) ConnectToPeer(addr *lnwire.NetAddress,
 // peer identified by ID with the passed channel funding paramters.
 func (s *server) OpenChannel(peerID int32, nodeKey *btcec.PublicKey,
 	localAmt, pushAmt btcutil.Amount,
-	numConfs uint32) (chan *lnrpc.OpenStatusUpdate, chan error) {
+	numConfs, feePerByte uint32) (chan *lnrpc.OpenStatusUpdate, chan error) {
 
 	errChan := make(chan error, 1)
 	updateChan := make(chan *lnrpc.OpenStatusUpdate, 1)
@@ -1229,6 +1230,7 @@ func (s *server) OpenChannel(peerID int32, nodeKey *btcec.PublicKey,
 		localFundingAmt: localAmt,
 		pushAmt:         pushAmt,
 		numConfs:        numConfs,
+		feePerByte:      feePerByte,
 		updates:         updateChan,
 		err:             errChan,
 	}

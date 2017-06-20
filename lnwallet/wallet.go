@@ -483,7 +483,7 @@ func (l *LightningWallet) InitChannelReservation(capacity,
 	ourFundAmt btcutil.Amount, theirID *btcec.PublicKey,
 	theirAddr *net.TCPAddr, numConfs uint16,
 	csvDelay uint32, ourDustLimit btcutil.Amount,
-	pushSat btcutil.Amount) (*ChannelReservation, error) {
+	pushSat btcutil.Amount, feePerByte uint32) (*ChannelReservation, error) {
 
 	// TODO(roasbeef): make the above into an initial config as part of the
 	// refactor to implement spec compliant funding flow
@@ -491,9 +491,12 @@ func (l *LightningWallet) InitChannelReservation(capacity,
 	errChan := make(chan error, 1)
 	respChan := make(chan *ChannelReservation, 1)
 
+	feePerKB := feePerByte * 1000
+
 	l.msgChan <- &initFundingReserveMsg{
 		capacity:      capacity,
 		numConfs:      numConfs,
+		minFeeRate:    btcutil.Amount(feePerKB),
 		fundingAmount: ourFundAmt,
 		csvDelay:      csvDelay,
 		ourDustLimit:  ourDustLimit,
@@ -543,7 +546,9 @@ func (l *LightningWallet) handleFundingReserveRequest(req *initFundingReserveMsg
 	if req.fundingAmount != 0 {
 		// TODO(roasbeef): consult model for proper fee rate on funding
 		// tx
-		feeRate := uint64(10)
+		feePerByte := req.minFeeRate / 1000
+
+		feeRate := uint64(feePerByte)
 		amt := req.fundingAmount + commitFee
 		err := l.selectCoinsAndChange(feeRate, amt, ourContribution)
 		if err != nil {
