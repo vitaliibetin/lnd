@@ -293,10 +293,12 @@ var openChannelCommand = cli.Command{
 		},
 		cli.IntFlag{
 			Name:  "fee_per_byte",
+			Value: 10,
 			Usage: "fee per byte for funding(opening) transaction",
 		},
 		cli.IntFlag{
 			Name:  "commit_fee",
+			Value: 5000,
 			Usage: "fee for on-chain(closing) transaction. NOTE: total fee = commit_fee + 5000sat",
 		},
 	},
