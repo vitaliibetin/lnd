@@ -1359,6 +1359,10 @@
         "fee_per_byte": {
           "type": "integer",
           "format": "int64"
+        },
+        "commit_fee": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },

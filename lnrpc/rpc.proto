@@ -362,6 +362,7 @@ message OpenChannelRequest {
     uint32 num_confs = 6 [ json_name = "num_confs" ];
 
     uint32 fee_per_byte = 7 [ json_name = "fee_per_byte" ];
+    uint32 commit_fee = 8 [ json_name = "commit_fee" ];
 }
 message OpenStatusUpdate {
     oneof update {

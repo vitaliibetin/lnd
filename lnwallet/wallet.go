@@ -37,7 +37,7 @@ const (
 	// rotations, etc.
 	identityKeyIndex = hdkeychain.HardenedKeyStart + 2
 
-	commitFee = 5000
+	// commitFee = 5000
 )
 
 var (
@@ -107,6 +107,8 @@ type initFundingReserveMsg struct {
 	// pushSat is the number of satoshis that should be pushed over the the
 	// responder as part of the initial channel creation.
 	pushSat btcutil.Amount
+
+	commitFee btcutil.Amount
 
 	// The delay on the "pay-to-self" output(s) of the commitment transaction.
 	csvDelay uint32
@@ -483,7 +485,7 @@ func (l *LightningWallet) InitChannelReservation(capacity,
 	ourFundAmt btcutil.Amount, theirID *btcec.PublicKey,
 	theirAddr *net.TCPAddr, numConfs uint16,
 	csvDelay uint32, ourDustLimit btcutil.Amount,
-	pushSat btcutil.Amount, feePerByte uint32) (*ChannelReservation, error) {
+	pushSat btcutil.Amount, feePerByte, commitFee uint32) (*ChannelReservation, error) {
 
 	// TODO(roasbeef): make the above into an initial config as part of the
 	// refactor to implement spec compliant funding flow
@@ -497,6 +499,7 @@ func (l *LightningWallet) InitChannelReservation(capacity,
 		capacity:      capacity,
 		numConfs:      numConfs,
 		minFeeRate:    btcutil.Amount(feePerKB),
+		commitFee:     btcutil.Amount(commitFee),
 		fundingAmount: ourFundAmt,
 		csvDelay:      csvDelay,
 		ourDustLimit:  ourDustLimit,
@@ -513,6 +516,8 @@ func (l *LightningWallet) InitChannelReservation(capacity,
 // handleFundingReserveRequest processes a message intending to create, and
 // validate a funding reservation request.
 func (l *LightningWallet) handleFundingReserveRequest(req *initFundingReserveMsg) {
+	commitFee := req.commitFee
+
 	// It isn't possible to create a channel with zero funds committed.
 	if req.fundingAmount+req.capacity == 0 {
 		req.err <- fmt.Errorf("cannot have channel with zero " +
@@ -524,7 +529,7 @@ func (l *LightningWallet) handleFundingReserveRequest(req *initFundingReserveMsg
 	id := atomic.AddUint64(&l.nextFundingID, 1)
 	totalCapacity := req.capacity + commitFee
 	reservation := NewChannelReservation(totalCapacity, req.fundingAmount,
-		req.minFeeRate, l, id, req.numConfs, req.pushSat)
+		req.minFeeRate, l, id, req.numConfs, req.pushSat, commitFee)
 
 	// Grab the mutex on the ChannelReservation to ensure thread-safety
 	reservation.Lock()

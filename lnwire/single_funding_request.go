@@ -40,6 +40,8 @@ type SingleFundingRequest struct {
 	// channel is open.
 	FeePerKb btcutil.Amount
 
+	CommitFee btcutil.Amount
+
 	// FundingAmount is the number of satoshis the initiator would like
 	// to commit to the channel.
 	FundingAmount btcutil.Amount
@@ -84,7 +86,7 @@ type SingleFundingRequest struct {
 
 // NewSingleFundingRequest creates, and returns a new empty SingleFundingRequest.
 func NewSingleFundingRequest(chanID [32]byte, chanType uint8, coinType uint64,
-	fee btcutil.Amount, amt btcutil.Amount, delay uint32, ck,
+	fee, commitFee btcutil.Amount, amt btcutil.Amount, delay uint32, ck,
 	cdp *btcec.PublicKey, deliveryScript PkScript,
 	dustLimit btcutil.Amount, pushSat btcutil.Amount,
 	confDepth uint32) *SingleFundingRequest {
@@ -94,6 +96,7 @@ func NewSingleFundingRequest(chanID [32]byte, chanType uint8, coinType uint64,
 		ChannelType:            chanType,
 		CoinType:               coinType,
 		FeePerKb:               fee,
+		CommitFee: 		commitFee,
 		FundingAmount:          amt,
 		CsvDelay:               delay,
 		CommitmentKey:          ck,
@@ -116,6 +119,7 @@ func (c *SingleFundingRequest) Decode(r io.Reader, pver uint32) error {
 		&c.ChannelType,
 		&c.CoinType,
 		&c.FeePerKb,
+		&c.CommitFee,
 		&c.FundingAmount,
 		&c.PushSatoshis,
 		&c.CsvDelay,
@@ -137,6 +141,7 @@ func (c *SingleFundingRequest) Encode(w io.Writer, pver uint32) error {
 		c.ChannelType,
 		c.CoinType,
 		c.FeePerKb,
+		c.CommitFee,
 		c.FundingAmount,
 		c.PushSatoshis,
 		c.CsvDelay,
@@ -174,6 +179,9 @@ func (c *SingleFundingRequest) MaxPayloadLength(uint32) uint32 {
 	length += 8
 
 	// FeePerKb - 8 bytes
+	length += 8
+
+	// CommitFee - 8 bytes
 	length += 8
 
 	// FundingAmount - 8 bytes

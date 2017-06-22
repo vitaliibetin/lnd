@@ -295,6 +295,10 @@ var openChannelCommand = cli.Command{
 			Name:  "fee_per_byte",
 			Usage: "fee per byte for funding(opening) transaction",
 		},
+		cli.IntFlag{
+			Name:  "commit_fee",
+			Usage: "fee for on-chain(closing) transaction. NOTE: total fee = commit_fee + 5000sat",
+		},
 	},
 	Action: openChannel,
 }
@@ -322,6 +326,7 @@ func openChannel(ctx *cli.Context) error {
 	req := &lnrpc.OpenChannelRequest{
 		NumConfs:   uint32(ctx.Int("num_confs")),
 		FeePerByte: uint32(ctx.Int("fee_per_byte")),
+		CommitFee:  uint32(ctx.Int("commit_fee")),
 	}
 
 	switch {

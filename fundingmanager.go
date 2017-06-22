@@ -21,6 +21,7 @@ import (
 	"github.com/roasbeef/btcd/wire"
 	"github.com/roasbeef/btcutil"
 	"google.golang.org/grpc"
+	"fmt"
 )
 
 const (
@@ -523,10 +524,15 @@ func (f *fundingManager) handleFundingRequest(fmsg *fundingRequestMsg) {
 	// EVG: Last argument will never use, because we use SingleFunding channel type
 	// and in this case responder doesn't pay any fee
 	feePerByte := uint32(0)
+	commitFee := uint32(msg.CommitFee)
+	fmt.Println("******************************************************")
+	fmt.Println("DEBUG(EVG):", commitFee)
+	fmt.Println("******************************************************")
+
 	reservation, err := f.cfg.Wallet.InitChannelReservation(amt, 0,
 		fmsg.peerAddress.IdentityKey, fmsg.peerAddress.Address,
 		uint16(fmsg.msg.ConfirmationDepth), delay, ourDustLimit,
-		msg.PushSatoshis, feePerByte)
+		msg.PushSatoshis, feePerByte, commitFee)
 	if err != nil {
 		// TODO(roasbeef): push ErrorGeneric message
 		fndgLog.Errorf("Unable to initialize reservation: %v", err)
@@ -1224,7 +1230,7 @@ func (f *fundingManager) handleInitFundingMsg(msg *initFundingMsg) {
 	// the request will fail, and be aborted.
 	reservation, err := f.cfg.Wallet.InitChannelReservation(capacity,
 		localAmt, peerKey, msg.peerAddress.Address, uint16(numConfs), 4,
-		ourDustLimit, msg.pushAmt, msg.feePerByte)
+		ourDustLimit, msg.pushAmt, msg.feePerByte, msg.commitFee)
 	if err != nil {
 		msg.err <- err
 		return
@@ -1271,6 +1277,7 @@ func (f *fundingManager) handleInitFundingMsg(msg *initFundingMsg) {
 		msg.channelType,
 		msg.coinType,
 		0, // TODO(roasbeef): grab from fee estimation model
+		btcutil.Amount(msg.commitFee),
 		capacity,
 		contribution.CsvDelay,
 		contribution.CommitKey,
