@@ -948,6 +948,35 @@ func (r *rpcServer) ListChannels(ctx context.Context,
 	return resp, nil
 }
 
+func (r *rpcServer) ListClosedChannels(ctx context.Context,
+	in *lnrpc.ListClosedChannelsRequest) (*lnrpc.ListClosedChannelsResponse, error) {
+
+	resp := &lnrpc.ListClosedChannelsResponse{}
+
+	pendingOnly := false
+	dbClosedChannels, err := r.server.chanDB.FetchClosedChannels(pendingOnly)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, closedChannel := range dbClosedChannels {
+
+		channelCloseSummary := &lnrpc.ListClosedChannelsResponse_ChannelCloseSummary{
+			ChanPoint:   closedChannel.ChanPoint.String(),
+			ClosingTxid: closedChannel.ClosingTXID.String(),
+			RemotePub:   hex.EncodeToString(closedChannel.RemotePub.SerializeCompressed()),
+			Capacity:    uint64(closedChannel.Capacity),
+			OurBalance:  uint64(closedChannel.OurBalance),
+			CloseType:   closedChannel.CloseType.ToListClosedChannelsResponse_ClosureType(),
+			IsPending:   closedChannel.IsPending,
+		}
+
+		resp.ClosedChannels = append(resp.ClosedChannels, channelCloseSummary)
+	}
+
+	return resp, nil
+}
+
 // savePayment saves a successfully completed payment to the database for
 // historical record keeping.
 func (r *rpcServer) savePayment(route *routing.Route, amount btcutil.Amount,

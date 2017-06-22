@@ -717,6 +717,28 @@ func listChannels(ctx *cli.Context) error {
 	return nil
 }
 
+var listClosedChannelsCommand = cli.Command{
+	Name:  "listclosedchannels",
+	Usage: "list all closed channels",
+	Action: listClosedChannels,
+}
+
+func listClosedChannels(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	req := &lnrpc.ListClosedChannelsRequest{}
+	resp, err := client.ListClosedChannels(ctxb, req)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
+
+	return nil
+}
+
 var sendPaymentCommand = cli.Command{
 	Name:  "sendpayment",
 	Usage: "send a payment over lightning",

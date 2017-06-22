@@ -556,6 +556,44 @@
     }
   },
   "definitions": {
+    "ListClosedChannelsResponseChannelCloseSummary": {
+      "type": "object",
+      "properties": {
+        "chan_point": {
+          "type": "string"
+        },
+        "closing_txid": {
+          "type": "string"
+        },
+        "remote_pub": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "our_balance": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "close_type": {
+          "$ref": "#/definitions/ListClosedChannelsResponseClosureType"
+        },
+        "is_pending": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "ListClosedChannelsResponseClosureType": {
+      "type": "string",
+      "enum": [
+        "COOPERATIVE_CLOSE",
+        "FORCE_CLOSE",
+        "BREACH_CLOSE"
+      ],
+      "default": "COOPERATIVE_CLOSE"
+    },
     "NewAddressRequestAddressType": {
       "type": "string",
       "enum": [
@@ -1159,6 +1197,20 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/lnrpcActiveChannel"
+          }
+        }
+      }
+    },
+    "lnrpcListClosedChannelsRequest": {
+      "type": "object"
+    },
+    "lnrpcListClosedChannelsResponse": {
+      "type": "object",
+      "properties": {
+        "closed_channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ListClosedChannelsResponseChannelCloseSummary"
           }
         }
       }

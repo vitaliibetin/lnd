@@ -69,6 +69,7 @@ func main() {
 		lookupInvoiceCommand,
 		listInvoicesCommand,
 		listChannelsCommand,
+		listClosedChannelsCommand,
 		listPaymentsCommand,
 		describeGraphCommand,
 		getChanInfoCommand,

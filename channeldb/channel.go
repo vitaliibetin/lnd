@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/shachain"
 	"github.com/roasbeef/btcd/btcec"
 	"github.com/roasbeef/btcd/chaincfg/chainhash"
@@ -672,6 +673,18 @@ const (
 	// _revoked_ channel state.
 	BreachClose
 )
+
+func (closureType ClosureType) ToListClosedChannelsResponse_ClosureType() lnrpc.ListClosedChannelsResponse_ClosureType {
+	switch closureType {
+	case CooperativeClose:
+		return lnrpc.ListClosedChannelsResponse_COOPERATIVE_CLOSE
+	case ForceClose:
+		return lnrpc.ListClosedChannelsResponse_FORCE_CLOSE
+	case BreachClose:
+		return lnrpc.ListClosedChannelsResponse_BREACH_CLOSE
+	}
+	return -1
+}
 
 // ChannelCloseSummary contains the final state of a channel at the point it
 // was close. Once a channel is closed, all the information pertaining to that

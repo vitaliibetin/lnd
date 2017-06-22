@@ -66,6 +66,8 @@ service Lightning {
             get: "/v1/channels"
         };
     }
+    rpc ListClosedChannels(ListClosedChannelsRequest) returns (ListClosedChannelsResponse) {}
+
     rpc OpenChannelSync(OpenChannelRequest) returns (ChannelPoint) {
         option (google.api.http) = {
             post: "/v1/channels"
@@ -274,6 +276,33 @@ message ActiveChannel {
 message ListChannelsRequest {}
 message ListChannelsResponse {
     repeated ActiveChannel channels = 11 [ json_name = "channels" ];
+}
+
+message ListClosedChannelsRequest {}
+message ListClosedChannelsResponse {
+    enum ClosureType {
+	    COOPERATIVE_CLOSE = 0;
+        FORCE_CLOSE = 1;
+        BREACH_CLOSE = 2;
+    }
+
+    message ChannelCloseSummary {
+        string chan_point = 1;
+
+	    string closing_txid = 2;
+
+	    string remote_pub = 3;
+
+	    uint64 capacity = 4;
+
+	    uint64 our_balance = 5;
+
+	    ClosureType close_type = 6;
+
+    	bool is_pending = 7;
+    }
+
+    repeated ChannelCloseSummary closed_channels = 1;
 }
 
 message Peer {
