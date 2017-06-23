@@ -19,6 +19,8 @@ import (
 )
 
 var (
+	transitPaymentBucket = []byte("tpb")
+
 	// openChanBucket stores all the currently open channels. This bucket
 	// has a second, nested bucket which is keyed by a node's ID. Additionally,
 	// at the base level of this bucket several prefixed keys are stored which

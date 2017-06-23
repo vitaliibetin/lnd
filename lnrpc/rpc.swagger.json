@@ -1263,6 +1263,21 @@
         }
       }
     },
+    "lnrpcListTransitPaymentsRequest": {
+      "type": "object"
+    },
+    "lnrpcListTransitPaymentsResponse": {
+      "type": "object",
+      "properties": {
+        "amount_list": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      }
+    },
     "lnrpcNetworkInfo": {
       "type": "object",
       "properties": {

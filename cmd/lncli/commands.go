@@ -718,8 +718,8 @@ func listChannels(ctx *cli.Context) error {
 }
 
 var listClosedChannelsCommand = cli.Command{
-	Name:  "listclosedchannels",
-	Usage: "list all closed channels",
+	Name:   "listclosedchannels",
+	Usage:  "list all closed channels",
 	Action: listClosedChannels,
 }
 
@@ -1258,6 +1258,27 @@ func listPayments(ctx *cli.Context) error {
 	}
 
 	printRespJSON(payments)
+	return nil
+}
+
+var listTransitPaymentsCommand = cli.Command{
+	Name:   "listtransitpayments",
+	Usage:  "list all transit payments",
+	Action: listTransitPayments,
+}
+
+func listTransitPayments(ctx *cli.Context) error {
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	req := &lnrpc.ListTransitPaymentsRequest{}
+
+	transitPayments, err := client.ListTransitPayments(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(transitPayments)
 	return nil
 }
 

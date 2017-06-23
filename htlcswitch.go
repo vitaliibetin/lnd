@@ -192,6 +192,8 @@ type htlcSwitch struct {
 	started  int32 // atomic
 	shutdown int32 // atomic
 
+	putTransitPaymentInfo func(btcutil.Amount) error
+
 	// chanIndex maps a channel's ID to a link which contains additional
 	// information about the channel, and additionally houses a pointer to
 	// the peer managing the channel.
@@ -238,16 +240,17 @@ type htlcSwitch struct {
 }
 
 // newHtlcSwitch creates a new htlcSwitch.
-func newHtlcSwitch() *htlcSwitch {
+func newHtlcSwitch(putTransitPaymentInfo func(btcutil.Amount) error) *htlcSwitch {
 	return &htlcSwitch{
-		chanIndex:        make(map[lnwire.ChannelID]*link),
-		interfaces:       make(map[chainhash.Hash][]*link),
-		onionIndex:       make(map[[ripemd160.Size]byte][]*link),
-		paymentCircuits:  make(map[circuitKey]*paymentCircuit),
-		linkControl:      make(chan interface{}),
-		htlcPlex:         make(chan *htlcPacket, htlcQueueSize),
-		outgoingPayments: make(chan *htlcPacket, htlcQueueSize),
-		quit:             make(chan struct{}),
+		putTransitPaymentInfo: putTransitPaymentInfo,
+		chanIndex:             make(map[lnwire.ChannelID]*link),
+		interfaces:            make(map[chainhash.Hash][]*link),
+		onionIndex:            make(map[[ripemd160.Size]byte][]*link),
+		paymentCircuits:       make(map[circuitKey]*paymentCircuit),
+		linkControl:           make(chan interface{}),
+		htlcPlex:              make(chan *htlcPacket, htlcQueueSize),
+		outgoingPayments:      make(chan *htlcPacket, htlcQueueSize),
+		quit:                  make(chan struct{}),
 	}
 }
 
@@ -504,6 +507,10 @@ out:
 						"for %x to settle", rHash[:])
 					deltaSatSent += pkt.amt
 					continue
+				}
+
+				if err := h.putTransitPaymentInfo(pkt.amt); err != nil {
+					hswcLog.Errorf("putTransitPaymentInfo func returns error: %v", err)
 				}
 
 				circuit.clear.restoreSlot()

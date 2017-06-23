@@ -1995,6 +1995,21 @@ func (r *rpcServer) ListPayments(context.Context,
 	return paymentsResp, nil
 }
 
+func (r *rpcServer) ListTransitPayments(context.Context,
+	*lnrpc.ListTransitPaymentsRequest) (*lnrpc.ListTransitPaymentsResponse, error) {
+
+	rpcsLog.Debug("[ListTransitPayments]")
+
+	amountList, err := r.server.chanDB.FetchAllTransitPaymentInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	return &lnrpc.ListTransitPaymentsResponse{
+		AmountList: amountList,
+	}, nil
+}
+
 // DeleteAllPayments deletes all outgoing payments from DB.
 func (r *rpcServer) DeleteAllPayments(context.Context,
 	*lnrpc.DeleteAllPaymentsRequest) (*lnrpc.DeleteAllPaymentsResponse, error) {

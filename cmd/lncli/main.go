@@ -71,6 +71,7 @@ func main() {
 		listChannelsCommand,
 		listClosedChannelsCommand,
 		listPaymentsCommand,
+		listTransitPaymentsCommand,
 		describeGraphCommand,
 		getChanInfoCommand,
 		getNodeInfoCommand,

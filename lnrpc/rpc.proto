@@ -125,6 +125,8 @@ service Lightning {
         };
     };
 
+    rpc ListTransitPayments(ListTransitPaymentsRequest) returns (ListTransitPaymentsResponse) {}
+
     rpc DeleteAllPayments(DeleteAllPaymentsRequest) returns (DeleteAllPaymentsResponse) {
         option (google.api.http) = {
             delete: "/v1/payments"
@@ -642,6 +644,11 @@ message ListPaymentsRequest {
 
 message ListPaymentsResponse {
     repeated Payment payments = 1 [ json_name= "payments" ];
+}
+
+message ListTransitPaymentsRequest {}
+message ListTransitPaymentsResponse {
+    repeated int64 amount_list = 1;
 }
 
 message DeleteAllPaymentsRequest {

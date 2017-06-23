@@ -132,7 +132,7 @@ func newServer(listenAddrs []string, notifier chainntnfs.ChainNotifier,
 
 		invoices:    newInvoiceRegistry(chanDB),
 		utxoNursery: newUtxoNursery(chanDB, notifier, wallet),
-		htlcSwitch:  newHtlcSwitch(),
+		htlcSwitch:  newHtlcSwitch(chanDB.PutTransitPaymentInfo),
 
 		identityPriv: privKey,
 		nodeSigner:   newNodeSigner(privKey),

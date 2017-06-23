@@ -9,8 +9,10 @@ import (
 	"sync"
 
 	"github.com/boltdb/bolt"
+	"github.com/roasbeef/btcutil"
 	"github.com/roasbeef/btcd/btcec"
 	"github.com/roasbeef/btcd/wire"
+	"strconv"
 )
 
 const (
@@ -97,7 +99,12 @@ func Open(dbPath string) (*DB, error) {
 // operation is fully atomic.
 func (d *DB) Wipe() error {
 	return d.Update(func(tx *bolt.Tx) error {
-		err := tx.DeleteBucket(openChannelBucket)
+		err := tx.DeleteBucket(transitPaymentBucket)
+		if err != nil && err != bolt.ErrBucketNotFound {
+			return err
+		}
+
+		err = tx.DeleteBucket(openChannelBucket)
 		if err != nil && err != bolt.ErrBucketNotFound {
 			return err
 		}
@@ -156,6 +163,10 @@ func createChannelDB(dbPath string) error {
 	}
 
 	err = bdb.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucket(transitPaymentBucket); err != nil {
+			return err
+		}
+
 		if _, err := tx.CreateBucket(openChannelBucket); err != nil {
 			return err
 		}
@@ -210,6 +221,46 @@ func fileExists(path string) bool {
 	}
 
 	return true
+}
+
+func (d *DB) PutTransitPaymentInfo(amt btcutil.Amount) error {
+	return d.Update(func(tx *bolt.Tx) error {
+		transitPaymentStore := tx.Bucket(transitPaymentBucket)
+		if transitPaymentStore == nil {
+			return nil
+		}
+
+		id, _ := transitPaymentStore.NextSequence()
+		convertedID := []byte(strconv.FormatUint(id, 10))
+
+		convertedAmount := []byte(strconv.FormatInt(int64(amt), 10))
+		if err := transitPaymentStore.Put(convertedID, convertedAmount); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (d *DB) FetchAllTransitPaymentInfo() ([]int64, error) {
+	amountList := make([]int64, 0)
+	if err := d.View(func(tx *bolt.Tx) error {
+		transitPaymentStore := tx.Bucket(transitPaymentBucket)
+		if transitPaymentStore == nil {
+			return nil
+		}
+
+		return transitPaymentStore.ForEach(func (key, value []byte) error {
+			convertedAmount, err := strconv.ParseInt(string(value), 10, 64)
+			if err != nil {
+				return err
+			}
+			amountList = append(amountList, convertedAmount)
+			return nil
+		})
+	}); err != nil {
+		return nil, err
+	}
+	return amountList, nil
 }
 
 // FetchOpenChannels returns all stored currently active/open channels
