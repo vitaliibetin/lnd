@@ -31,6 +31,9 @@ const (
 	defaultHTTPRPCAddr        = ":8080"
 	defaultSwaggerPath        = "lnrpc/rpc.swagger.json"
 	defaultHTTPSecret         = ""
+
+	defaultAbsoluteLightningFee int64 = 500
+	defaultRelativeLightningFee int   = 1
 )
 
 var (
@@ -83,11 +86,14 @@ type config struct {
 	DebugHTLC          bool `long:"debughtlc" description:"Activate the debug htlc mode. With the debug HTLC mode, all payments sent use a pre-determined R-Hash. Additionally, all HTLCs sent to a node with the debug HTLC R-Hash are immediately settled in the next available state transition."`
 	MaxPendingChannels int  `long:"maxpendingchannels" description:"The maximum number of incoming pending channels permitted per peer."`
 
-	Litecoin *chainConfig `group:"Litecoin" namespace:"litecoin"`
-	Bitcoin  *chainConfig `group:"Bitcoin" namespace:"bitcoin"`
-	HTTPRPCAddr string `long:"httprpcaddr" description:"Address for HTTP RPC server"`
-	HTTPSecret string  `long:"httpsecret" description:"Secret used for validation JWT tokens for HTTP RPC. If empty authotization is disabled."`
-	SwaggerPath string `long:"swagger" description:"Path to swagger description file."`
+	Litecoin    *chainConfig `group:"Litecoin" namespace:"litecoin"`
+	Bitcoin     *chainConfig `group:"Bitcoin" namespace:"bitcoin"`
+	HTTPRPCAddr string       `long:"httprpcaddr" description:"Address for HTTP RPC server"`
+	HTTPSecret  string       `long:"httpsecret" description:"Secret used for validation JWT tokens for HTTP RPC. If empty authotization is disabled."`
+	SwaggerPath string       `long:"swagger" description:"Path to swagger description file."`
+
+	AbsoluteLightningFee int64 `long:"absolutelnfee" description:"absolute fee that is charged for transit payments through us"`
+	RelativeLightningFee int   `long:"relativelnfee" description:"relative fee that is charged for transit payments through us"`
 }
 
 // loadConfig initializes and parses the config using a config file and command
@@ -100,16 +106,18 @@ type config struct {
 // 	4) Parse CLI options and overwrite/add any specified options
 func loadConfig() (*config, error) {
 	defaultCfg := config{
-		ConfigFile:         defaultConfigFile,
-		DataDir:            defaultDataDir,
-		DebugLevel:         defaultLogLevel,
-		LogDir:             defaultLogDir,
-		PeerPort:           defaultPeerPort,
-		RPCPort:            defaultRPCPort,
-		HTTPRPCAddr:        defaultHTTPRPCAddr,
-		HTTPSecret:         defaultHTTPSecret,
-		SwaggerPath:        defaultSwaggerPath,
-		MaxPendingChannels: defaultMaxPendingChannels,
+		ConfigFile:           defaultConfigFile,
+		DataDir:              defaultDataDir,
+		DebugLevel:           defaultLogLevel,
+		LogDir:               defaultLogDir,
+		PeerPort:             defaultPeerPort,
+		RPCPort:              defaultRPCPort,
+		HTTPRPCAddr:          defaultHTTPRPCAddr,
+		HTTPSecret:           defaultHTTPSecret,
+		SwaggerPath:          defaultSwaggerPath,
+		MaxPendingChannels:   defaultMaxPendingChannels,
+		AbsoluteLightningFee: defaultAbsoluteLightningFee,
+		RelativeLightningFee: defaultRelativeLightningFee,
 		Bitcoin: &chainConfig{
 			RPCHost: defaultRPCHost,
 			RPCCert: defaultBtcdRPCCertFile,

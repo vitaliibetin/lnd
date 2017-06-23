@@ -384,6 +384,19 @@ out:
 			// state so we can properly forward the ultimate settle
 			// message.
 			case *lnwire.UpdateAddHTLC:
+				/*
+				const lightningFee = 500
+				wireMsg.Amount -= lightningFee
+				pkt.amt -= lightningFee
+				*/
+				wireMsg.Amount = applySummaryLightningFee(wireMsg.Amount)
+				pkt.amt = applySummaryLightningFee(pkt.amt)
+
+				hswcLog.Info("************************************************")
+				hswcLog.Infof("wireMsg.Amount: %v\n", wireMsg.Amount)
+				hswcLog.Infof("pkt.amt: %v\n", pkt.amt)
+				hswcLog.Info("************************************************")
+
 				payHash := wireMsg.PaymentHash
 
 				// Create the two ends of the payment circuit
@@ -930,4 +943,16 @@ func (h *htlcSwitch) UpdateLink(chanID lnwire.ChannelID, delta btcutil.Amount) {
 		targetLink:     chanID,
 		bandwidthDelta: delta,
 	}
+}
+
+func applyAbsoluteLightningFee(amount btcutil.Amount) btcutil.Amount {
+	return amount - btcutil.Amount(cfg.AbsoluteLightningFee)
+}
+
+func applyRelativeLightningFee(amount btcutil.Amount) btcutil.Amount {
+	return amount - amount * btcutil.Amount(cfg.RelativeLightningFee) / 100
+}
+
+func applySummaryLightningFee(amount btcutil.Amount) btcutil.Amount {
+	return applyAbsoluteLightningFee(applyRelativeLightningFee(amount))
 }
