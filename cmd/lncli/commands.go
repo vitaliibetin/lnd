@@ -650,6 +650,92 @@ func getInfo(ctx *cli.Context) error {
 	return nil
 }
 
+var signMessageCommand = cli.Command{
+	Name:  "signmessage",
+	Usage: "signs arbitary message by lnd identity private key",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "message",
+			Usage: "message which will has signed",
+		},
+	},
+	Action: signMessage,
+}
+
+func signMessage(ctx *cli.Context) error {
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	req := &lnrpc.SignMessageRequest{
+		Message: []byte(ctx.String("message")),
+	}
+	resp, err := client.SignMessage(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	printJSON(struct {
+		Signature string `json:"signature"`
+	}{
+		Signature: hex.EncodeToString(resp.Signature),
+	})
+	return nil
+}
+
+var verifySignatureCommand = cli.Command{
+	Name:  "verifysignature",
+	Usage: "verifies signature for given message and public key",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "signature",
+			Usage: "ecdsa signature",
+		},
+		cli.StringFlag{
+			Name:  "message",
+			Usage: "message which was signed",
+		},
+		cli.StringFlag{
+			Name:  "pub_key",
+			Usage: "ecdsa public key, if not specified uses own(lnd) public key",
+		},
+	},
+	Action: verifySignature,
+}
+
+func verifySignature(ctx *cli.Context) error {
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	var (
+		signature []byte
+		pubKey    []byte
+		err       error
+	)
+
+	signature, err = hex.DecodeString(ctx.String("signature"))
+	if err != nil {
+		return err
+	}
+
+	pubKey, err = hex.DecodeString(ctx.String("pub_key"))
+	if err != nil {
+		return err
+	}
+
+	req := &lnrpc.VerifySignatureRequest{
+		Signature: signature,
+		Message:   []byte(ctx.String("message")),
+		PubKey:    pubKey,
+	}
+	resp, err := client.VerifySignature(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
+	return nil
+}
+
 var pendingChannelsCommand = cli.Command{
 	Name:  "pendingchannels",
 	Usage: "display information pertaining to pending channels",

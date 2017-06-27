@@ -63,6 +63,8 @@ func main() {
 		walletBalanceCommand,
 		channelBalanceCommand,
 		getInfoCommand,
+		signMessageCommand,
+		verifySignatureCommand,
 		pendingChannelsCommand,
 		sendPaymentCommand,
 		addInvoiceCommand,

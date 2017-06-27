@@ -1746,6 +1746,24 @@
     "lnrpcSetAliasResponse": {
       "type": "object"
     },
+    "lnrpcSignMessageRequest": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "lnrpcSignMessageResponse": {
+      "type": "object",
+      "properties": {
+        "signature": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "lnrpcTransaction": {
       "type": "object",
       "properties": {
@@ -1785,6 +1803,32 @@
           "items": {
             "$ref": "#/definitions/lnrpcTransaction"
           }
+        }
+      }
+    },
+    "lnrpcVerifySignatureRequest": {
+      "type": "object",
+      "properties": {
+        "signature": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string",
+          "format": "byte"
+        },
+        "pub_key": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "lnrpcVerifySignatureResponse": {
+      "type": "object",
+      "properties": {
+        "is_correct": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },

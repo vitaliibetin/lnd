@@ -54,6 +54,8 @@ service Lightning {
             get: "/v1/getinfo"
         };
     }
+    rpc SignMessage(SignMessageRequest) returns (SignMessageResponse) {}
+    rpc VerifySignature(VerifySignatureRequest) returns (VerifySignatureResponse) {}
 
     // TODO(roasbeef): merge with below with bool?
     rpc PendingChannels(PendingChannelRequest) returns (PendingChannelResponse) {
@@ -345,6 +347,24 @@ message GetInfoResponse {
     bool testnet = 10 [ json_name = "testnet" ];
 
     repeated string chains = 11[ json_name = "chains" ] ;
+}
+
+message SignMessageRequest {
+    bytes message = 1 [ json_name = "message" ];
+}
+
+message SignMessageResponse {
+    bytes signature = 1 [ json_name = "signature" ];
+}
+
+message VerifySignatureRequest {
+    bytes signature = 1 [ json_name = "signature" ];
+    bytes message = 2 [ json_name = "message" ];
+    bytes pub_key = 3 [ json_name = "pub_key" ];
+}
+
+message VerifySignatureResponse {
+    bool is_correct = 1 [ json_name = "is_correct" ];
 }
 
 message ConfirmationUpdate {

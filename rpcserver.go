@@ -677,6 +677,49 @@ func (r *rpcServer) GetInfo(ctx context.Context,
 	}, nil
 }
 
+func (r *rpcServer) SignMessage(ctx context.Context,
+	in *lnrpc.SignMessageRequest) (*lnrpc.SignMessageResponse, error) {
+
+	signature, err := r.server.identityPriv.Sign(in.Message)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lnrpc.SignMessageResponse{
+		Signature: signature.Serialize(),
+	}, nil
+}
+
+func (r *rpcServer) VerifySignature(ctx context.Context,
+	in *lnrpc.VerifySignatureRequest) (*lnrpc.VerifySignatureResponse, error) {
+
+	var (
+		signature *btcec.Signature
+		pubKey    *btcec.PublicKey
+		err       error
+	)
+
+	signature, err = btcec.ParseDERSignature(in.Signature, btcec.S256())
+	if err != nil {
+		return nil, err
+	}
+
+	if len(in.PubKey) == 0 {
+		pubKey = r.server.identityPriv.PubKey()
+	} else {
+		pubKey, err = btcec.ParsePubKey(in.PubKey, btcec.S256())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	isCorrect := signature.Verify(in.Message, pubKey)
+
+	return &lnrpc.VerifySignatureResponse{
+		IsCorrect: isCorrect,
+	}, nil
+}
+
 // ListPeers returns a verbose listing of all currently active peers.
 func (r *rpcServer) ListPeers(ctx context.Context,
 	in *lnrpc.ListPeersRequest) (*lnrpc.ListPeersResponse, error) {
