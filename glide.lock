@@ -109,7 +109,6 @@ imports:
   version: f391b8402d23024e7c0f624b31267a89998fca95
 - name: github.com/lightninglabs/neutrino
   version: 795780db975fb6570eb7a9ec751fd4c070ec06eb
-  repo: git@github.com:lightninglabs/neutrino
   subpackages:
   - filterdb
   - headerfs
