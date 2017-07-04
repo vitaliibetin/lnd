@@ -1649,3 +1649,32 @@ func listChainTxns(ctx *cli.Context) error {
 	printRespJSON(resp)
 	return nil
 }
+
+var setHackerNoSettleHTLCCommand = cli.Command{
+	Name:        "sethackernosettlehtlc",
+	Usage:       "Control hackernosettlehtlc field of hacker config. ",
+	Description: "If enabled lnd will not settle any active htlc.",
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "value",
+			Usage: "hackernosettlehtlc value",
+		},
+	},
+	Action: setHackerNoSettleHTLC,
+}
+
+func setHackerNoSettleHTLC(ctx *cli.Context) error {
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	req := &lnrpc.SetHackerNoSettleHTLCRequest{
+		Value: ctx.Bool("value"),
+	}
+	resp, err := client.SetHackerNoSettleHTLC(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
+	return nil
+}

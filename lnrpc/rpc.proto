@@ -170,6 +170,8 @@ service Lightning {
     rpc SetAlias(SetAliasRequest) returns (SetAliasResponse);
 
     rpc DebugLevel(DebugLevelRequest) returns (DebugLevelResponse);
+
+    rpc SetHackerNoSettleHTLC(SetHackerNoSettleHTLCRequest) returns (SetHackerNoSettleHTLCResponse) {}
 }
 
 message Transaction {
@@ -693,3 +695,9 @@ message PayReq {
     string payment_hash = 2 [ json_name = "payment_hash" ];
     int64 num_satoshis = 3 [ json_name = "num_satoshis" ];
 }
+
+message SetHackerNoSettleHTLCRequest {
+    bool value = 1;
+}
+
+message SetHackerNoSettleHTLCResponse {}

@@ -82,6 +82,7 @@ func main() {
 		debugLevelCommand,
 		decodePayReqComamnd,
 		listChainTxnsCommand,
+		setHackerNoSettleHTLCCommand,
 	}
 
 	if err := app.Run(os.Args); err != nil {

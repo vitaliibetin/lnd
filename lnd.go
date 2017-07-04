@@ -32,23 +32,24 @@ import (
 
 var (
 	cfg              *config
+	hackerCfg        *hackerConfig
 	shutdownChannel  = make(chan struct{})
 	registeredChains = newChainRegistry()
 )
 
 type respWriterHelper struct {
 	Code int
-	w http.ResponseWriter
+	w    http.ResponseWriter
 }
 
 func newRespWriterHelper(w http.ResponseWriter) *respWriterHelper {
 	return &respWriterHelper{
 		Code: 200,
-		w: w,
+		w:    w,
 	}
 }
-func (w *respWriterHelper) Header() http.Header { return w.w.Header()}
-func (w *respWriterHelper) Write(b []byte) (int, error) { return w.w.Write(b)}
+func (w *respWriterHelper) Header() http.Header         { return w.w.Header() }
+func (w *respWriterHelper) Write(b []byte) (int, error) { return w.w.Write(b) }
 func (w *respWriterHelper) WriteHeader(c int) {
 	w.Code = c
 	w.w.WriteHeader(c)
@@ -99,6 +100,8 @@ func lndMain() error {
 	}
 	cfg = loadedConfig
 	defer backendLog.Flush()
+
+	hackerCfg = newHackerConfig()
 
 	// Show version at startup.
 	ltndLog.Infof("Version %s", version())
@@ -287,7 +290,7 @@ func lndMain() error {
 		return err
 	}
 	allowCORSMiddleware := func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request){
+		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 			if req.Method == "OPTIONS" {
 				resp.Header().Set("Access-Control-Allow-Origin", "*")
 				resp.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")

@@ -2118,3 +2118,11 @@ func (r *rpcServer) DecodePayReq(ctx context.Context,
 		NumSatoshis: int64(payReq.Amount),
 	}, nil
 }
+
+func (r *rpcServer) SetHackerNoSettleHTLC(ctx context.Context,
+	req *lnrpc.SetHackerNoSettleHTLCRequest) (*lnrpc.SetHackerNoSettleHTLCResponse, error) {
+
+	hackerCfg.SetHackerNoSettleHTLC(req.Value)
+
+	return &lnrpc.SetHackerNoSettleHTLCResponse{}, nil
+}

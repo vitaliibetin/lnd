@@ -25,12 +25,17 @@ const (
 	// htlcQueueSize...
 	// buffer bloat ;)
 	htlcQueueSize = 50
+
+	htlcSwitchDebugMessage = "HTLCSWITCHDEBUG"
+	hackerNodeDebugMessage = "HACKERNODEDEBUG"
 )
 
 var (
 	zeroBytes [32]byte
 )
 
+	// slots is a buffered channel whose buffer is the total number of
+	// outstanding HTLC's we can add to a link's commitment transaction.
 // boundedLinkChan is a simple wrapper around a link's communication channel
 // that bounds the total flow into and through the channel. Channels attached
 // the link have a value which defines the max number of pending HTLC's present
@@ -39,8 +44,6 @@ var (
 // to a link if the max limit has een reached. Once HTLC's are cleared from the
 // commitment transaction, slots are freed up and more can proceed.
 type boundedLinkChan struct {
-	// slots is a buffered channel whose buffer is the total number of
-	// outstanding HTLC's we can add to a link's commitment transaction.
 	// This channel is essentially used as a semaphore.
 	slots chan struct{}
 
@@ -323,6 +326,9 @@ out:
 	for {
 		select {
 		case htlcPkt := <-h.outgoingPayments:
+			hswcLog.Debugf("%v(<---), case htlcPkt := <-h.outgoingPayments:",
+				htlcSwitchDebugMessage)
+
 			dest := htlcPkt.dest
 			h.interfaceMtx.RLock()
 			chanInterface, ok := h.interfaces[dest]
@@ -384,6 +390,9 @@ out:
 			// state so we can properly forward the ultimate settle
 			// message.
 			case *lnwire.UpdateAddHTLC:
+				hswcLog.Debugf("%v(<---), case pkt := <-h.htlcPlex " +
+					"case *lnwire.UpdateAddHTLC", htlcSwitchDebugMessage)
+
 				/*
 				const lightningFee = 500
 				wireMsg.Amount -= lightningFee
@@ -430,6 +439,8 @@ out:
 					h.chanIndexMtx.RUnlock()
 
 					cancelLink.linkChan <- cancelPkt
+					hswcLog.Debug("%v(--->) sent UpdateFailHTLC(UnknownDestination)",
+						htlcSwitchDebugMessage)
 					continue
 				}
 
@@ -466,6 +477,8 @@ out:
 					// link, restoring a slot in the
 					// bounded channel in the process.
 					settleLink.sendAndRestore(pkt)
+					hswcLog.Debug("%v(--->) sent UpdateFailHTLC(InsufficientCapacity)",
+						htlcSwitchDebugMessage)
 					continue
 				}
 
@@ -492,6 +505,9 @@ out:
 					done:     make(chan struct{}),
 				})
 
+				hswcLog.Debugf("%v(--->) send UpdateAddHTLC(clear) " +
+					"circuit.clear.sendAndConsume", htlcSwitchDebugMessage)
+
 				// Reduce the available bandwidth for the link
 				// as it will clear the above HTLC, increasing
 				// the limbo balance within the channel.
@@ -507,6 +523,14 @@ out:
 			// settle msg to the link which initially created the
 			// circuit.
 			case *lnwire.UpdateFufillHTLC:
+				hswcLog.Debugf("%v(<---), case pkt := <-h.htlcPlex " +
+					"case *lnwire.UpdateFufillHTLC", htlcSwitchDebugMessage)
+
+				if hackerCfg.GetHackerNoSettleHTLC() {
+					hswcLog.Debugf("%v, hacker mode was enabled(no settle htlc). " +
+						"Skip incoming UpdateFulfillHTLC message", hackerNodeDebugMessage)
+					continue
+				}
 				rHash := sha256.Sum256(wireMsg.PaymentPreimage[:])
 				var cKey circuitKey
 				copy(cKey[:], rHash[:])
@@ -538,6 +562,9 @@ out:
 					err: make(chan error, 1),
 				})
 
+				hswcLog.Debugf("%v(--->) sent UpdateFufillHTLC(settle), " +
+					"circuit.settle.sendAndRestore", htlcSwitchDebugMessage)
+
 				// Increase the available bandwidth for the
 				// link as it will settle the above HTLC,
 				// subtracting from the limbo balance and
@@ -556,6 +583,8 @@ out:
 			// route. In response, we'll terminate the payment
 			// circuit and propagate the error backwards.
 			case *lnwire.UpdateFailHTLC:
+				hswcLog.Debugf("%v(<---), case pkt := <-h.htlcPlex " +
+					"case *lnwire.UpdateFailHTLC", htlcSwitchDebugMessage)
 				// In order to properly handle the error, we'll
 				// need to look up the original circuit that
 				// the incoming HTLC created.
@@ -587,6 +616,9 @@ out:
 					payHash: pkt.payHash,
 					err:     make(chan error, 1),
 				})
+
+				hswcLog.Debugf("%v(--->) send UpdateFailHTLC(settle) " +
+					"circuit.settle.sendAndRestore", htlcSwitchDebugMessage)
 
 				delete(h.paymentCircuits, pkt.payHash)
 			}

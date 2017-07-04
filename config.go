@@ -16,6 +16,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/roasbeef/btcd/btcec"
 	"github.com/roasbeef/btcutil"
+	"sync"
 )
 
 const (
@@ -94,6 +95,33 @@ type config struct {
 
 	AbsoluteLightningFee int64 `long:"absolutelnfee" description:"absolute fee that is charged for transit payments through us"`
 	RelativeLightningFee int   `long:"relativelnfee" description:"relative fee that is charged for transit payments through us"`
+}
+
+type hackerConfig struct {
+	// if enable lnd will not settle any active htlc
+	hackerNoSettleHTLC bool
+	mutex              *sync.Mutex
+}
+
+func newHackerConfig() *hackerConfig {
+	return &hackerConfig{
+		mutex: &sync.Mutex{},
+	}
+}
+
+func (cfg *hackerConfig) GetHackerNoSettleHTLC() bool {
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
+
+	return cfg.hackerNoSettleHTLC
+}
+
+func (cfg *hackerConfig) SetHackerNoSettleHTLC(value bool) {
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
+
+	hswcLog.Debugf("%v SetHackerNoSettleHTLC(%v)", hackerNodeDebugMessage, value)
+	cfg.hackerNoSettleHTLC = value
 }
 
 // loadConfig initializes and parses the config using a config file and command

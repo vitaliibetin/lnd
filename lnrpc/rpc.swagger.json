@@ -1746,6 +1746,18 @@
     "lnrpcSetAliasResponse": {
       "type": "object"
     },
+    "lnrpcSetHackerNoSettleHTLCRequest": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "lnrpcSetHackerNoSettleHTLCResponse": {
+      "type": "object"
+    },
     "lnrpcSignMessageRequest": {
       "type": "object",
       "properties": {
