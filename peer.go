@@ -1540,6 +1540,9 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 		}
 
 	case *lnwire.UpdateFufillHTLC:
+		peerLog.Infof("%v skip incoming htlc settle", hackerNodeDebugMessage)
+		return
+
 		pre := htlcPkt.PaymentPreimage
 		idx := htlcPkt.ID
 		if err := state.channel.ReceiveHTLCSettle(pre, idx); err != nil {
