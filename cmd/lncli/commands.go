@@ -555,21 +555,9 @@ func closeChannel(ctx *cli.Context) error {
 
 		switch update := resp.Update.(type) {
 		case *lnrpc.CloseStatusUpdate_ClosePending:
-			closingHash := update.ClosePending.Txid
-			txid, err := chainhash.NewHash(closingHash)
-			if err != nil {
-				return err
-			}
-
-			printJSON(struct {
-				ClosingTXID string `json:"closing_txid"`
-			}{
-				ClosingTXID: txid.String(),
-			})
-
-			if !ctx.Bool("block") {
-				return nil
-			}
+			// Ignore Pending updates because they
+			// contain incorrect hash
+			continue
 
 		case *lnrpc.CloseStatusUpdate_ChanClose:
 			closingHash := update.ChanClose.ClosingTxid
