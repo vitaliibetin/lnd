@@ -27,7 +27,7 @@ type litecoinNetParams struct {
 // bitcoinTestNetParams contains parameters specific to the 3rd version of the
 // test network.
 var bitcoinTestNetParams = bitcoinNetParams{
-	Params:  &bitcoinCfg.TestNet3Params,
+	Params:  &bitcoinCfg.MainNetParams,
 	rpcPort: "18334",
 }
 
