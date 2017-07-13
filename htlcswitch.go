@@ -526,11 +526,6 @@ out:
 				hswcLog.Debugf("%v(<---), case pkt := <-h.htlcPlex " +
 					"case *lnwire.UpdateFufillHTLC", htlcSwitchDebugMessage)
 
-				if hackerCfg.GetHackerNoSettleHTLC() {
-					hswcLog.Debugf("%v, hacker mode was enabled(no settle htlc). " +
-						"Skip incoming UpdateFulfillHTLC message", hackerNodeDebugMessage)
-					continue
-				}
 				rHash := sha256.Sum256(wireMsg.PaymentPreimage[:])
 				var cKey circuitKey
 				copy(cKey[:], rHash[:])

@@ -1540,8 +1540,11 @@ func (p *peer) handleUpstreamMsg(state *commitmentState, msg lnwire.Message) {
 		}
 
 	case *lnwire.UpdateFufillHTLC:
-		peerLog.Infof("%v skip incoming htlc settle", hackerNodeDebugMessage)
-		return
+		if hackerCfg.GetHackerNoSettleHTLC() {
+			hswcLog.Debugf("%v, hacker mode was enabled(no settle htlc). " +
+				"Skip incoming UpdateFulfillHTLC message", hackerNodeDebugMessage)
+			return
+		}
 
 		pre := htlcPkt.PaymentPreimage
 		idx := htlcPkt.ID
