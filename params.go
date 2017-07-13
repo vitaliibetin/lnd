@@ -24,9 +24,15 @@ type litecoinNetParams struct {
 	rpcPort string
 }
 
+// TODO(mkl): does mainnet and testnet use the same RPC port?
 // bitcoinTestNetParams contains parameters specific to the 3rd version of the
 // test network.
 var bitcoinTestNetParams = bitcoinNetParams{
+	Params:  &bitcoinCfg.TestNet3Params,
+	rpcPort: "18334",
+}
+
+var bitcoinMainNetParams = bitcoinNetParams{
 	Params:  &bitcoinCfg.MainNetParams,
 	rpcPort: "18334",
 }

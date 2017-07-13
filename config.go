@@ -55,6 +55,7 @@ type chainConfig struct {
 
 	TestNet3 bool `long:"testnet" description:"Use the test network"`
 	SimNet   bool `long:"simnet" description:"Use the simulation test network"`
+	MainNet  bool `long:"mainnet" description:"Use the main network"`
 }
 
 // config defines the configuration options for lnd.
@@ -204,7 +205,12 @@ func loadConfig() (*config, error) {
 			activeNetParams = bitcoinTestNetParams
 		}
 		if cfg.Bitcoin.SimNet {
+			numNets++
 			activeNetParams = bitcoinSimNetParams
+		}
+		if cfg.Bitcoin.MainNet {
+			numNets++
+			activeNetParams = bitcoinMainNetParams
 		}
 		if numNets > 1 {
 			str := "%s: The testnet, segnet, and simnet params can't be " +
