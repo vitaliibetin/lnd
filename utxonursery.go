@@ -983,10 +983,8 @@ func putLastHeightGraduated(db *channeldb.DB, blockheight uint32) error {
 
 // newSweepPkScript creates a new public key script which should be used to
 // sweep any time-locked, or contested channel funds into the wallet.
-// Specifically, the script generated is a version 0,
-// pay-to-witness-pubkey-hash (p2wkh) output.
 func newSweepPkScript(wallet lnwallet.WalletController) ([]byte, error) {
-	sweepAddr, err := wallet.NewAddress(lnwallet.WitnessPubKey, false)
+	sweepAddr, err := wallet.NewAddress(lnwallet.PubKeyHash, false)
 	if err != nil {
 		return nil, err
 	}

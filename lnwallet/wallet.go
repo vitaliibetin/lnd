@@ -593,7 +593,7 @@ func (l *LightningWallet) handleFundingReserveRequest(req *initFundingReserveMsg
 
 	// Generate a fresh address to be used in the case of a cooperative
 	// channel close.
-	deliveryAddress, err := l.NewAddress(WitnessPubKey, false)
+	deliveryAddress, err := l.NewAddress(PubKeyHash, false)
 	if err != nil {
 		req.err <- err
 		req.resp <- nil
@@ -1279,8 +1279,7 @@ func (l *LightningWallet) selectCoinsAndChange(feeRate uint64, amt btcutil.Amoun
 	// Record any change output(s) generated as a result of the coin
 	// selection.
 	if changeAmt != 0 {
-		// TODO(mkl): DELETE WITNESS
-		changeAddr, err := l.NewAddress(WitnessPubKey, true)
+		changeAddr, err := l.NewAddress(PubKeyHash, true)
 		if err != nil {
 			return err
 		}
