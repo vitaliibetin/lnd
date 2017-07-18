@@ -1,0 +1,492 @@
+12:27:17 2017-07-14 [INF] LTND: Version 0.2.1-alpha
+12:27:17 2017-07-14 [INF] CHDB: Checking for schema update: latest_version=1, db_version=1
+12:27:17 2017-07-14 [INF] LTND: Primary chain is set to: bitcoin
+12:27:20 2017-07-14 [INF] DISC: Opened wallet
+12:27:21 2017-07-14 [INF] DISC: The wallet has been unlocked without a time limit
+12:27:21 2017-07-14 [INF] LTND: LightningWallet opened
+12:27:21 2017-07-14 [INF] NTFN: New block epoch subscription
+12:27:21 2017-07-14 [INF] DISC: Authenticated Gossiper is starting
+12:27:21 2017-07-14 [INF] NTFN: New block epoch subscription
+12:27:21 2017-07-14 [INF] CRTR: FilteredChainView starting
+12:27:22 2017-07-14 [INF] CRTR: Prune tip for Channel Graph: height=0, hash=<nil>
+12:27:22 2017-07-14 [INF] CRTR: Filtering chain using 0 channels active
+12:27:22 2017-07-14 [DBG] CRTR: Updating chain filter with new UTXO's: []
+12:27:22 2017-07-14 [INF] CMGR: Server listening on [::]:12011
+12:27:22 2017-07-14 [INF] RPCS: gRPC proxy started
+12:27:22 2017-07-14 [INF] RPCS: RPC server listening on 127.0.0.1:12009
+12:28:40 2017-07-14 [DBG] RPCS: [walletbalance] balance=0 BTC
+12:31:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:32:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:36:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:37:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:41:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:42:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:46:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:47:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:51:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:51:29 2017-07-14 [INF] CRTR: Pruning channel graph using block 0000000000000000008e15e31dc6fd15519ee6dcafaaac9884b311ae508e7062 (height=475782)
+12:51:29 2017-07-14 [INF] NTFN: New block: height=475782, sha=0000000000000000008e15e31dc6fd15519ee6dcafaaac9884b311ae508e7062
+12:51:30 2017-07-14 [INF] CRTR: Block 0000000000000000008e15e31dc6fd15519ee6dcafaaac9884b311ae508e7062 (height=475782) closed 0 channels
+12:52:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:56:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:57:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+12:57:11 2017-07-14 [INF] NTFN: New block: height=475783, sha=0000000000000000003bb496a1c8778f16ae3329e5a442255771fedcdb3e0113
+12:57:11 2017-07-14 [INF] CRTR: Pruning channel graph using block 0000000000000000003bb496a1c8778f16ae3329e5a442255771fedcdb3e0113 (height=475783)
+12:57:11 2017-07-14 [INF] CRTR: Block 0000000000000000003bb496a1c8778f16ae3329e5a442255771fedcdb3e0113 (height=475783) closed 0 channels
+13:01:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:02:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:02:36 2017-07-14 [DBG] RPCS: [walletbalance] balance=0 BTC
+13:05:19 2017-07-14 [DBG] RPCS: [walletbalance] balance=0 BTC
+13:06:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:06:24 2017-07-14 [INF] NTFN: New block: height=475784, sha=000000000000000000a9c9fd6a9e2b9076bec90be7578039bfb2aafeee577637
+13:06:24 2017-07-14 [INF] CRTR: Pruning channel graph using block 000000000000000000a9c9fd6a9e2b9076bec90be7578039bfb2aafeee577637 (height=475784)
+13:06:24 2017-07-14 [INF] CRTR: Block 000000000000000000a9c9fd6a9e2b9076bec90be7578039bfb2aafeee577637 (height=475784) closed 0 channels
+13:07:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:07:29 2017-07-14 [INF] SRVR: New inbound connection from 127.0.0.1:32835
+13:07:29 2017-07-14 [DBG] PEER: Loaded 0 active channels from database with peerID(1)
+13:07:29 2017-07-14 [INF] DISC: Syncing channel graph state with 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4, sending 1 vertexes and 0 edges
+13:07:29 2017-07-14 [DBG] SRVR: Attempting to send msgs 1 to: 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4
+13:07:29 2017-07-14 [INF] CRTR: Updated vertex data for node=0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4
+13:07:29 2017-07-14 [DBG] DISC: Ignoring outdated announcement for 029585b91831567b464edd36675433ecb5b39d156959b68c38b15b7024e615b7e2
+13:07:29 2017-07-14 [INF] DISC: Broadcasting batch of 1 new announcements
+13:07:29 2017-07-14 [DBG] SRVR: Broadcasting 1 messages
+13:07:32 2017-07-14 [INF] FNDG: Recv'd fundingRequest(amt=0.007 BTC, push=0 BTC, delay=4, pendingId=c463c43508143f42fffe2eff194872423c26cef47be31ebab81ab78c4885f584) from peer(0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4)
+13:07:32 2017-07-14 [INF] FNDG: Sending fundingResp for pendingID(c463c43508143f42fffe2eff194872423c26cef47be31ebab81ab78c4885f584)
+13:07:32 2017-07-14 [DBG] SRVR: Attempting to send msgs 1 to: 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4
+13:07:32 2017-07-14 [INF] FNDG: completing pendingID(c463c43508143f42fffe2eff194872423c26cef47be31ebab81ab78c4885f584) with ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0)
+13:07:32 2017-07-14 [DBG] FNDG: Creating chan barrier for ChanID(9e6015c2d943c9852d006f302569c00031fe7408356ef2dc1f53a8809201dcd8)
+13:07:32 2017-07-14 [INF] FNDG: sending signComplete for pendingID(c463c43508143f42fffe2eff194872423c26cef47be31ebab81ab78c4885f584) over ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0)
+13:07:32 2017-07-14 [DBG] SRVR: Attempting to send msgs 1 to: 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4
+13:07:32 2017-07-14 [INF] FNDG: Waiting for funding tx (d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e) to reach 1 confirmations
+13:07:32 2017-07-14 [INF] NTFN: New confirmations subscription: txid=d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e, numconfs=1
+13:07:32 2017-07-14 [INF] NTFN: Attempting to trigger dispatch for d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e from historical chain
+13:07:32 2017-07-14 [WRN] NTFN: unable to query for txid(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e): -5: The transaction index must be enabled to query the blockchain (specify --txindex)
+13:08:20 2017-07-14 [INF] CRTR: Updated vertex data for node=037dbf2ba33bf076aaa07d5ba71890e3f0f1af610a7cc762ee7d56b39f438b900a
+13:08:20 2017-07-14 [INF] DISC: Broadcasting batch of 1 new announcements
+13:08:20 2017-07-14 [DBG] SRVR: Broadcasting 1 messages
+13:09:59 2017-07-14 [INF] NTFN: New block: height=475785, sha=000000000000000000cec812a90fd7f2bdf6b307a2827aee6d6c347885bd28fb
+13:09:59 2017-07-14 [INF] NTFN: Dispatching single conf notification, sha=d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e, height=475785
+13:09:59 2017-07-14 [INF] FNDG: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) is now active: ChannelID(39653630313563326439343363393835326430303666333032353639633030303331666537343038333536656632646331663533613838303932303164636438)
+13:09:59 2017-07-14 [INF] CRTR: Pruning channel graph using block 000000000000000000cec812a90fd7f2bdf6b307a2827aee6d6c347885bd28fb (height=475785)
+13:09:59 2017-07-14 [DBG] LNWL: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0), starting local commitment: (*lnwallet.commitment)(0xc420606f00)({
+ height: (uint64) 0,
+ ourMessageIndex: (uint64) 0,
+ theirMessageIndex: (uint64) 0,
+ txn: (*wire.MsgTx)(<nil>),
+ sig: ([]uint8) <nil>,
+ ourBalance: (btcutil.Amount) 0 BTC,
+ theirBalance: (btcutil.Amount) 0.006457 BTC,
+ fee: (btcutil.Amount) 0.000543 BTC,
+ outgoingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>,
+ incomingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>
+})
+
+13:09:59 2017-07-14 [DBG] LNWL: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0), starting remote commitment: (*lnwallet.commitment)(0xc420606f80)({
+ height: (uint64) 0,
+ ourMessageIndex: (uint64) 0,
+ theirMessageIndex: (uint64) 0,
+ txn: (*wire.MsgTx)(<nil>),
+ sig: ([]uint8) <nil>,
+ ourBalance: (btcutil.Amount) 0 BTC,
+ theirBalance: (btcutil.Amount) 0.006457 BTC,
+ fee: (btcutil.Amount) 0.000543 BTC,
+ outgoingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>,
+ incomingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>
+})
+
+13:09:59 2017-07-14 [DBG] SRVR: Attempting to send msgs 1 to: 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4
+13:09:59 2017-07-14 [INF] FNDG: Announcing ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0), short_chan_id=(lnwire.ShortChannelID) {
+ BlockHeight: (uint32) 475785,
+ TxIndex: (uint32) 118,
+ TxPosition: (uint16) 0
+}
+
+13:09:59 2017-07-14 [INF] CRTR: Block 000000000000000000cec812a90fd7f2bdf6b307a2827aee6d6c347885bd28fb (height=475785) closed 0 channels
+13:09:59 2017-07-14 [DBG] LNWL: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0), starting local commitment: (*lnwallet.commitment)(0xc42064f380)({
+ height: (uint64) 0,
+ ourMessageIndex: (uint64) 0,
+ theirMessageIndex: (uint64) 0,
+ txn: (*wire.MsgTx)(<nil>),
+ sig: ([]uint8) <nil>,
+ ourBalance: (btcutil.Amount) 0 BTC,
+ theirBalance: (btcutil.Amount) 0.006457 BTC,
+ fee: (btcutil.Amount) 0.000543 BTC,
+ outgoingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>,
+ incomingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>
+})
+
+13:09:59 2017-07-14 [DBG] LNWL: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0), starting remote commitment: (*lnwallet.commitment)(0xc42064f400)({
+ height: (uint64) 0,
+ ourMessageIndex: (uint64) 0,
+ theirMessageIndex: (uint64) 0,
+ txn: (*wire.MsgTx)(<nil>),
+ sig: ([]uint8) <nil>,
+ ourBalance: (btcutil.Amount) 0 BTC,
+ theirBalance: (btcutil.Amount) 0.006457 BTC,
+ fee: (btcutil.Amount) 0.000543 BTC,
+ outgoingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>,
+ incomingHTLCs: ([]lnwallet.PaymentDescriptor) <nil>
+})
+
+13:09:59 2017-07-14 [INF] NTFN: New spend subscription: utxo=d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0
+13:09:59 2017-07-14 [INF] PEER: New channel active ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) with peerId(1)
+13:09:59 2017-07-14 [DBG] BRAR: New contract detected, launching breachObserver
+13:09:59 2017-07-14 [DBG] BRAR: Breach observer for ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) started
+13:09:59 2017-07-14 [INF] LNWL: Close observer for ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) active
+13:09:59 2017-07-14 [INF] HSWC: registering new link, interface=498d95e6942d897ee9bde840de99dc1d82f0a0198f2db6ef5a06676cfec73550, onion_link=d25a415709b23e1786d21a41b1b4543731b72629, chan_point=d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0, capacity=0.007 BTC
+13:09:59 2017-07-14 [INF] PEER: HTLC manager for ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) started, our_balance=0 BTC, their_balance=0.006457 BTC, chain_height=0
+13:09:59 2017-07-14 [INF] CRTR: New channel discovered! Link connects 029585b91831567b464edd36675433ecb5b39d156959b68c38b15b7024e615b7e2 and 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4 with ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0): chan_id=523131139829137408, capacity=0.007 BTC
+13:09:59 2017-07-14 [DBG] CRTR: Updating chain filter with new UTXO's: [d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0]
+13:09:59 2017-07-14 [INF] CRTR: New channel update applied: (*channeldb.ChannelEdgePolicy)(0xc4210e8360)({
+ Signature: (*btcec.Signature)(0xc420640290)({
+  R: (*big.Int)(0xc4206729a0)(37946087535300491858398265371506519970869005014770431168784791396666558441486),
+  S: (*big.Int)(0xc420672a40)(29311032722138540903855212724033969214498643328683765839215678901955296439603)
+ }),
+ ChannelID: (uint64) 523131139829137408,
+ LastUpdate: (time.Time) 2017-07-14 13:09:59 +0200 CEST,
+ Flags: (uint16) 0,
+ TimeLockDelta: (uint16) 1,
+ MinHTLC: (btcutil.Amount) 0 BTC,
+ FeeBaseMSat: (btcutil.Amount) 0 BTC,
+ FeeProportionalMillionths: (btcutil.Amount) 0 BTC,
+ Node: (*channeldb.LightningNode)(<nil>),
+ db: (*channeldb.DB)(<nil>)
+})
+
+13:09:59 2017-07-14 [INF] DISC: Received new channel announcement: (*lnwire.AnnounceSignatures)(0xc420657a00)({
+ ChannelID: (lnwire.ChannelID) (len=32 cap=32) 9e6015c2d943c9852d006f302569c00031fe7408356ef2dc1f53a8809201dcd8,
+ ShortChannelID: (lnwire.ShortChannelID) {
+  BlockHeight: (uint32) 475785,
+  TxIndex: (uint32) 118,
+  TxPosition: (uint16) 0
+ },
+ NodeSignature: (*btcec.Signature)(0xc4206402c0)({
+  R: (*big.Int)(0xc420676aa0)(114064527418235621176738895599667141144538950449720697118890314703097919853398),
+  S: (*big.Int)(0xc420676b40)(43057652517062529467227623805283082426725761149444975389818381116316498715198)
+ }),
+ BitcoinSignature: (*btcec.Signature)(0xc4206402e0)({
+  R: (*big.Int)(0xc420682860)(68194061893629187884727233671118922314067765487906198977939866630459205889353),
+  S: (*big.Int)(0xc420682900)(7490905200803792213088725710811130565999050293205096998093089338455671925797)
+ })
+})
+
+13:10:00 2017-07-14 [DBG] SRVR: Attempting to send msgs 1 to: 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4
+13:10:00 2017-07-14 [INF] DISC: Sent channel announcement proof for short_chan_id=523131139829137408 to remote peer: 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4
+13:10:00 2017-07-14 [INF] DISC: 1/2 of channel ann proof received for short_chan_id=523131139829137408, waiting for other half
+13:10:00 2017-07-14 [INF] DISC: Received new channel announcement: (*lnwire.AnnounceSignatures)(0xc420796c40)({
+ ChannelID: (lnwire.ChannelID) (len=32 cap=32) 9e6015c2d943c9852d006f302569c00031fe7408356ef2dc1f53a8809201dcd8,
+ ShortChannelID: (lnwire.ShortChannelID) {
+  BlockHeight: (uint32) 475785,
+  TxIndex: (uint32) 118,
+  TxPosition: (uint16) 0
+ },
+ NodeSignature: (*btcec.Signature)(0xc42061ea10)({
+  R: (*big.Int)(0xc420677f80)(111674816899102003675318144242063957364806256197767859946764086406522459594803),
+  S: (*big.Int)(0xc420677fa0)(52372845481992300662546248101399527371842028193335269002878192052866423542164)
+ }),
+ BitcoinSignature: (*btcec.Signature)(0xc42061ea20)({
+  R: (*big.Int)(0xc420677fc0)(83616053952107215527245825406130104964983645878466369493551796483298885008751),
+  S: (*big.Int)(0xc420677fe0)(21986802700594320917109340236201305877452952435823177492568946976411584636650)
+ })
+})
+
+13:10:00 2017-07-14 [INF] DISC: Fully valid channel proof for short_chan_id=523131139829137408 constructed, adding to next ann batch
+13:10:00 2017-07-14 [INF] DISC: Broadcasting batch of 2 new announcements
+13:10:00 2017-07-14 [DBG] SRVR: Broadcasting 2 messages
+13:10:00 2017-07-14 [DBG] DISC: Ignoring msg for known chan_id=523131139829137408
+13:10:00 2017-07-14 [INF] CRTR: New channel update applied: (*channeldb.ChannelEdgePolicy)(0xc420e202a0)({
+ Signature: (*btcec.Signature)(0xc42061f2f0)({
+  R: (*big.Int)(0xc42067cde0)(43360508817072627848526363515791742757388705686573658861812406878808132546915),
+  S: (*big.Int)(0xc42067ce20)(49235982909254318638812101511629811582919853669403698555598490521746915341252)
+ }),
+ ChannelID: (uint64) 523131139829137408,
+ LastUpdate: (time.Time) 2017-07-14 13:09:59 +0200 CEST,
+ Flags: (uint16) 1,
+ TimeLockDelta: (uint16) 1,
+ MinHTLC: (btcutil.Amount) 0 BTC,
+ FeeBaseMSat: (btcutil.Amount) 0 BTC,
+ FeeProportionalMillionths: (btcutil.Amount) 0 BTC,
+ Node: (*channeldb.LightningNode)(<nil>),
+ db: (*channeldb.DB)(<nil>)
+})
+
+13:10:00 2017-07-14 [INF] DISC: Broadcasting batch of 1 new announcements
+13:10:00 2017-07-14 [DBG] SRVR: Broadcasting 1 messages
+13:10:00 2017-07-14 [DBG] DISC: Ignoring announcement (flags=0) for known chan_id=523131139829137408
+13:11:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:11:51 2017-07-14 [INF] NTFN: New block: height=475786, sha=000000000000000000a58db866f853a84e0431e30479f0c0ce7f5f0cf50f9c59
+13:11:51 2017-07-14 [INF] CRTR: Pruning channel graph using block 000000000000000000a58db866f853a84e0431e30479f0c0ce7f5f0cf50f9c59 (height=475786)
+13:11:52 2017-07-14 [INF] CRTR: Block 000000000000000000a58db866f853a84e0431e30479f0c0ce7f5f0cf50f9c59 (height=475786) closed 0 channels
+13:12:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:16:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:17:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:21:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:22:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:22:47 2017-07-14 [INF] NTFN: New block: height=475787, sha=00000000000000000112ae0fffce17a43d5d2831183d9460b8a68b34a9910976
+13:22:47 2017-07-14 [INF] CRTR: Pruning channel graph using block 00000000000000000112ae0fffce17a43d5d2831183d9460b8a68b34a9910976 (height=475787)
+13:22:48 2017-07-14 [INF] CRTR: Block 00000000000000000112ae0fffce17a43d5d2831183d9460b8a68b34a9910976 (height=475787) closed 0 channels
+13:22:49 2017-07-14 [INF] CRTR: New channel discovered! Link connects 0350c850baa9e8882731546ceb9e20c9a8db6123b558ee58248c62496850457aa4 and 037dbf2ba33bf076aaa07d5ba71890e3f0f1af610a7cc762ee7d56b39f438b900a with ChannelPoint(8a4bf5481b12ee572639454939bef0d5e5b1a92bb3892db431ebb88f944e3f90:1): chan_id=523133338875527169, capacity=0.007 BTC
+13:22:49 2017-07-14 [DBG] CRTR: Updating chain filter with new UTXO's: [8a4bf5481b12ee572639454939bef0d5e5b1a92bb3892db431ebb88f944e3f90:1]
+13:22:49 2017-07-14 [INF] CRTR: New channel update applied: (*channeldb.ChannelEdgePolicy)(0xc4210e83c0)({
+ Signature: (*btcec.Signature)(0xc420dc8470)({
+  R: (*big.Int)(0xc420682080)(94346652219781068865862235385970662964607358345911207252183371492469997045940),
+  S: (*big.Int)(0xc4206820a0)(26604812193090440034561845754199450893745058904290400373534125103797820505122)
+ }),
+ ChannelID: (uint64) 523133338875527169,
+ LastUpdate: (time.Time) 2017-07-14 13:22:48 +0200 CEST,
+ Flags: (uint16) 0,
+ TimeLockDelta: (uint16) 1,
+ MinHTLC: (btcutil.Amount) 0 BTC,
+ FeeBaseMSat: (btcutil.Amount) 0 BTC,
+ FeeProportionalMillionths: (btcutil.Amount) 0 BTC,
+ Node: (*channeldb.LightningNode)(<nil>),
+ db: (*channeldb.DB)(<nil>)
+})
+
+13:22:49 2017-07-14 [INF] CRTR: New channel update applied: (*channeldb.ChannelEdgePolicy)(0xc420e20480)({
+ Signature: (*btcec.Signature)(0xc420640660)({
+  R: (*big.Int)(0xc421082d20)(28537830604799475272711528721042068640062066268982033328789193255549097253104),
+  S: (*big.Int)(0xc421082d40)(48902814506192180036781358761304540836306516077800131504897386523294661633186)
+ }),
+ ChannelID: (uint64) 523133338875527169,
+ LastUpdate: (time.Time) 2017-07-14 13:22:48 +0200 CEST,
+ Flags: (uint16) 1,
+ TimeLockDelta: (uint16) 1,
+ MinHTLC: (btcutil.Amount) 0 BTC,
+ FeeBaseMSat: (btcutil.Amount) 0 BTC,
+ FeeProportionalMillionths: (btcutil.Amount) 0 BTC,
+ Node: (*channeldb.LightningNode)(<nil>),
+ db: (*channeldb.DB)(<nil>)
+})
+
+13:22:49 2017-07-14 [INF] DISC: Broadcasting batch of 3 new announcements
+13:22:49 2017-07-14 [DBG] SRVR: Broadcasting 3 messages
+13:26:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:26:34 2017-07-14 [DBG] RPCS: [walletbalance] balance=0 BTC
+13:27:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:27:21 2017-07-14 [DBG] DISC: Retransmitting 1 outgoing channels
+13:27:21 2017-07-14 [DBG] SRVR: Broadcasting 1 messages
+13:27:42 2017-07-14 [DBG] DISC: Ignoring announcement (flags=1) for known chan_id=523131139829137408
+13:27:42 2017-07-14 [DBG] DISC: Ignoring announcement (flags=0) for known chan_id=523133338875527169
+13:27:47 2017-07-14 [DBG] LTND: Adding invoice (*channeldb.Invoice)(0xc421110100)({
+ Memo: ([]uint8) (cap=8) {
+ },
+ Receipt: ([]uint8) <nil>,
+ CreationDate: (time.Time) 2017-07-14 13:27:47.40680676 +0200 CEST,
+ Terms: (channeldb.ContractTerm) {
+  PaymentPreimage: ([32]uint8) (len=32 cap=32) {
+   00000000  22 4a a6 1f a0 d4 e1 84  be 00 6b 35 d8 4c d4 52  |"J........k5.L.R|
+   00000010  1e e5 31 02 68 35 10 db  5f fe b7 fd 47 13 46 e5  |..1.h5.._...G.F.|
+  },
+  Value: (btcutil.Amount) 0.005 BTC,
+  Settled: (bool) false
+ }
+})
+
+13:28:17 2017-07-14 [DBG] LTND: Settling invoice e91779dad66c3138c385a7c2ff63e071d866ce8752f750e1e8e496eaffba172d
+13:28:17 2017-07-14 [INF] LTND: Payment received: (*channeldb.Invoice)(0xc42064f480)({
+ Memo: ([]uint8) {
+ },
+ Receipt: ([]uint8) {
+ },
+ CreationDate: (time.Time) 2017-07-14 13:27:47.40680676 +0200 CEST,
+ Terms: (channeldb.ContractTerm) {
+  PaymentPreimage: ([32]uint8) (len=32 cap=32) {
+   00000000  22 4a a6 1f a0 d4 e1 84  be 00 6b 35 d8 4c d4 52  |"J........k5.L.R|
+   00000010  1e e5 31 02 68 35 10 db  5f fe b7 fd 47 13 46 e5  |..1.h5.._...G.F.|
+  },
+  Value: (btcutil.Amount) 0.005 BTC,
+  Settled: (bool) true
+ }
+})
+
+13:29:27 2017-07-14 [DBG] CRTR: Searching for path to 037dbf2ba33bf076aaa07d5ba71890e3f0f1af610a7cc762ee7d56b39f438b900a, sending 0.003 BTC
+13:29:27 2017-07-14 [DBG] CRTR: Obtained 1 paths sending 0.003 BTC to 037dbf2ba33bf076aaa07d5ba71890e3f0f1af610a7cc762ee7d56b39f438b900a: (routing.sortableRoutes) (len=1 cap=1) {
+ (*routing.Route)(0xc421122000)({
+  TotalTimeLock: (uint32) 2,
+  TotalFees: (btcutil.Amount) 0 BTC,
+  TotalAmount: (btcutil.Amount) 0.003 BTC,
+  Hops: ([]*routing.Hop) (len=2 cap=2) {
+   (*routing.Hop)(0xc420682ce0)({
+    Channel: (*routing.ChannelHop)(0xc420827d40)({
+     Capacity: (btcutil.Amount) 0.007 BTC,
+     Chain: (chainhash.Hash) (len=32 cap=32) 0000000000000000000000000000000000000000000000000000000000000000,
+     ChannelEdgePolicy: (*channeldb.ChannelEdgePolicy)(0xc42006db00)({
+      Signature: (*btcec.Signature)(0xc420013390)({
+       R: (*big.Int)(0xc421082d40)(37946087535300491858398265371506519970869005014770431168784791396666558441486),
+       S: (*big.Int)(0xc421082d60)(29311032722138540903855212724033969214498643328683765839215678901955296439603)
+      }),
+      ChannelID: (uint64) 523131139829137408,
+      LastUpdate: (time.Time) 2017-07-14 13:09:59 +0200 CEST,
+      Flags: (uint16) 0,
+      TimeLockDelta: (uint16) 1,
+      MinHTLC: (btcutil.Amount) 0 BTC,
+      FeeBaseMSat: (btcutil.Amount) 0 BTC,
+      FeeProportionalMillionths: (btcutil.Amount) 0 BTC,
+      Node: (*channeldb.LightningNode)(0xc420699180)({
+       LastUpdate: (time.Time) 2017-07-14 12:27:42 +0200 CEST,
+       Addresses: ([]net.Addr) <nil>,
+       PubKey: (*btcec.PublicKey)(0xc421082da0)({
+        Curve: (elliptic.Curve) <nil>,
+        X: (*big.Int)(0xc421082dc0)(36538954471768246616805933166629809854259272190953146006930348410160911055524),
+        Y: (*big.Int)(0xc421082de0)(105117704783163328439621740282042436588087638748678213751404964181369411608533)
+       }),
+       Color: (color.RGBA) {
+        R: (uint8) 0,
+        G: (uint8) 0,
+        B: (uint8) 0,
+        A: (uint8) 0
+       },
+       Alias: (string) (len=20) "0350c850baa9e8882731",
+       AuthSig: (*btcec.Signature)(0xc4200136d0)({
+        R: (*big.Int)(0xc421082f60)(74744865256787227673602025196845438652911519491059353159254884641473595506091),
+        S: (*big.Int)(0xc421082fa0)(43727381069767257804283316200493346587169227849876884901634777475710232741593)
+       }),
+       Features: (*lnwire.FeatureVector)(0xc420013680)({
+        featuresMap: (map[lnwire.featureName]int) <nil>,
+        flags: (map[int]lnwire.featureFlag) {
+        }
+       }),
+       db: (*channeldb.DB)(0xc420338100)(DB<"data/mainnet/bitcoin/channel.db">)
+      }),
+      db: (*channeldb.DB)(0xc420338100)(DB<"data/mainnet/bitcoin/channel.db">)
+     })
+    }),
+    TimeLockDelta: (uint16) 1,
+    AmtToForward: (btcutil.Amount) 0.003 BTC,
+    Fee: (btcutil.Amount) 0 BTC
+   }),
+   (*routing.Hop)(0xc420682cc0)({
+    Channel: (*routing.ChannelHop)(0xc4206885a0)({
+     Capacity: (btcutil.Amount) 0.007 BTC,
+     Chain: (chainhash.Hash) (len=32 cap=32) 0000000000000000000000000000000000000000000000000000000000000000,
+     ChannelEdgePolicy: (*channeldb.ChannelEdgePolicy)(0xc42006df80)({
+      Signature: (*btcec.Signature)(0xc420013c40)({
+       R: (*big.Int)(0xc421083ec0)(94346652219781068865862235385970662964607358345911207252183371492469997045940),
+       S: (*big.Int)(0xc421083ee0)(26604812193090440034561845754199450893745058904290400373534125103797820505122)
+      }),
+      ChannelID: (uint64) 523133338875527169,
+      LastUpdate: (time.Time) 2017-07-14 13:22:48 +0200 CEST,
+      Flags: (uint16) 0,
+      TimeLockDelta: (uint16) 1,
+      MinHTLC: (btcutil.Amount) 0 BTC,
+      FeeBaseMSat: (btcutil.Amount) 0 BTC,
+      FeeProportionalMillionths: (btcutil.Amount) 0 BTC,
+      Node: (*channeldb.LightningNode)(0xc420010150)({
+       LastUpdate: (time.Time) 2017-07-14 12:27:56 +0200 CEST,
+       Addresses: ([]net.Addr) <nil>,
+       PubKey: (*btcec.PublicKey)(0xc421083f20)({
+        Curve: (elliptic.Curve) <nil>,
+        X: (*big.Int)(0xc421083f40)(56876875038157534865028935523318386498562636549253425837801612364801217630218),
+        Y: (*big.Int)(0xc421083f60)(91282017937688117751266623027384718583852673224587678420405054466313962715821)
+       }),
+       Color: (color.RGBA) {
+        R: (uint8) 0,
+        G: (uint8) 0,
+        B: (uint8) 0,
+        A: (uint8) 0
+       },
+       Alias: (string) (len=20) "037dbf2ba33bf076aaa0",
+       AuthSig: (*btcec.Signature)(0xc420dc8030)({
+        R: (*big.Int)(0xc4206760a0)(54246368502433597950998697629613708458736509751055846971519326007765530972759),
+        S: (*big.Int)(0xc4206760c0)(37641064651331069017838080158447283456709821915695750036888686164532029099228)
+       }),
+       Features: (*lnwire.FeatureVector)(0xc420dc8020)({
+        featuresMap: (map[lnwire.featureName]int) <nil>,
+        flags: (map[int]lnwire.featureFlag) {
+        }
+       }),
+       db: (*channeldb.DB)(0xc420338100)(DB<"data/mainnet/bitcoin/channel.db">)
+      }),
+      db: (*channeldb.DB)(0xc420338100)(DB<"data/mainnet/bitcoin/channel.db">)
+     })
+    }),
+    TimeLockDelta: (uint16) 1,
+    AmtToForward: (btcutil.Amount) 0.003 BTC,
+    Fee: (btcutil.Amount) 0 BTC
+   })
+  }
+ })
+}
+
+13:29:28 2017-07-14 [DBG] HSWC: No existing circuit for 8c57549be81f84afc611f07952324bf99a1e8aa3d50caef63cfdffc830815aec to settle
+13:29:31 2017-07-14 [INF] HSWC: Sent 300000 satoshis, received 0 satoshis in the last 10 seconds (1 tx/sec)
+13:31:09 2017-07-14 [INF] PEER: Broadcasting cooperative close tx: (*wire.MsgTx)(0xc420e0e100)({
+ Version: (int32) 2,
+ TxIn: ([]*wire.TxIn) (len=1 cap=15) {
+  (*wire.TxIn)(0xc421080aa0)({
+   PreviousOutPoint: (wire.OutPoint) d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0,
+   SignatureScript: ([]uint8) (len=217 cap=500) {
+    00000000  00 47 30 44 02 20 6d eb  0c 72 e8 82 fa 06 2e fd  |.G0D. m..r......|
+    00000010  5b 07 57 bb 8a e7 6f 01  04 8e 7e 9c 8a 25 43 e9  |[.W...o...~..%C.|
+    00000020  b5 93 ae 72 a3 1f 02 20  6b cd be 25 c6 4d 15 1d  |...r... k..%.M..|
+    00000030  f2 9f 2b fb 2e cd f5 56  98 fe 94 10 d1 7f 70 a2  |..+....V......p.|
+    00000040  d1 0d 69 82 9b a1 c1 51  01 47 30 44 02 20 1c 98  |..i....Q.G0D. ..|
+    00000050  1b 9c 21 ed 2d 90 c5 64  24 29 e7 b9 c5 33 3b e2  |..!.-..d$)...3;.|
+    00000060  54 cb 88 24 13 9f 5d 58  81 af f1 8d a0 3a 02 20  |T..$..]X.....:. |
+    00000070  79 8a 3e 9c 26 fb c0 19  e9 4d 9d 25 1d 2d 47 4d  |y.>.&....M.%.-GM|
+    00000080  11 20 de 6e 4a 4c 32 12  85 34 27 df 83 9f 8e 74  |. .nJL2..4'....t|
+    00000090  01 47 52 21 02 b1 bf 93  37 91 d2 87 8b cb 40 51  |.GR!....7.....@Q|
+    000000a0  c5 28 5f af f1 63 77 fb  99 9b d3 f9 e3 2d 0d 3e  |.(_..cw......-.>|
+    000000b0  45 34 83 b1 06 21 02 42  3c 4e 01 fa d9 60 a4 1a  |E4...!.B<N...`..|
+    000000c0  7d 05 03 d9 41 ce 7b 31  ec 27 44 bd 54 1f e3 99  |}...A.{1.'D.T...|
+    000000d0  a9 27 77 3a 18 58 00 52  ae                       |.'w:.X.R.|
+   },
+   Sequence: (uint32) 2151059100
+  })
+ },
+ TxOut: ([]*wire.TxOut) (len=2 cap=15) {
+  (*wire.TxOut)(0xc4210821c0)({
+   Value: (int64) 200000,
+   PkScript: ([]uint8) (len=25 cap=25) {
+    00000000  76 a9 14 5d 96 b6 07 8f  72 f1 85 c8 a5 b9 81 21  |v..]....r......!|
+    00000010  0e ea 3b b3 cb fd e1 88  ac                       |..;......|
+   }
+  }),
+  (*wire.TxOut)(0xc4210821e0)({
+   Value: (int64) 391400,
+   PkScript: ([]uint8) (len=25 cap=25) {
+    00000000  76 a9 14 f0 b5 71 3b 19  4d a4 30 60 8e fd 5a 7d  |v....q;.M.0`..Z}|
+    00000010  26 7f f7 35 19 69 82 88  ac                       |&..5.i...|
+   }
+  })
+ },
+ LockTime: (uint32) 0
+})
+
+13:31:09 2017-07-14 [INF] PEER: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) is now closed
+13:31:09 2017-07-14 [DBG] HSWC: unregistering active link, interface=498d95e6942d897ee9bde840de99dc1d82f0a0198f2db6ef5a06676cfec73550, chan_id=9e6015c2d943c9852d006f302569c00031fe7408356ef2dc1f53a8809201dcd8
+13:31:09 2017-07-14 [DBG] BRAR: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) has been settled, cancelling breachObserver
+13:31:09 2017-07-14 [INF] NTFN: Cancelling spend notification for out_point=d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0, spend_id=1
+13:31:09 2017-07-14 [DBG] DISC: Marked address 19XrPRozL2JJJmrqTcJdVAxRVwsmEpqdZh used
+13:31:09 2017-07-14 [INF] NTFN: New spend subscription: utxo=d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0
+13:31:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:32:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:34:19 2017-07-14 [INF] NTFN: Dispatching spend notification for outpoint=d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0
+13:34:19 2017-07-14 [INF] SRVR: ChannelPoint(d8dc019280a8531fdcf26e350874fe3100c06925306f002d85c943d9c215609e:0) is now closed at height 475788
+13:34:19 2017-07-14 [DBG] DISC: Marked address 19XrPRozL2JJJmrqTcJdVAxRVwsmEpqdZh used
+13:34:20 2017-07-14 [INF] CRTR: Pruning channel graph using block 0000000000000000003c2901f9a8aadbec9d749616fcb3d2a1756e56773defc4 (height=475788)
+13:34:20 2017-07-14 [INF] NTFN: New block: height=475788, sha=0000000000000000003c2901f9a8aadbec9d749616fcb3d2a1756e56773defc4
+13:34:20 2017-07-14 [INF] CRTR: Block 0000000000000000003c2901f9a8aadbec9d749616fcb3d2a1756e56773defc4 (height=475788) closed 1 channels
+13:36:09 2017-07-14 [INF] NTFN: New block: height=475789, sha=0000000000000000015320a88bdc2fc3d217ee0121351a6b60ddaeda34c8de95
+13:36:09 2017-07-14 [INF] CRTR: Pruning channel graph using block 0000000000000000015320a88bdc2fc3d217ee0121351a6b60ddaeda34c8de95 (height=475789)
+13:36:09 2017-07-14 [INF] CRTR: Block 0000000000000000015320a88bdc2fc3d217ee0121351a6b60ddaeda34c8de95 (height=475789) closed 0 channels
+13:36:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:37:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:41:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:42:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:42:20 2017-07-14 [INF] NTFN: New block: height=475790, sha=00000000000000000051970d966ebe691064164e8f4d27f6d9b867a7a3c052ed
+13:42:20 2017-07-14 [INF] CRTR: Pruning channel graph using block 00000000000000000051970d966ebe691064164e8f4d27f6d9b867a7a3c052ed (height=475790)
+13:42:20 2017-07-14 [INF] CRTR: Block 00000000000000000051970d966ebe691064164e8f4d27f6d9b867a7a3c052ed (height=475790) closed 1 channels
+13:44:52 2017-07-14 [INF] CRTR: Pruning channel graph using block 000000000000000000ae1a40aec00ac52c9879e19ee638a8ec6419eead195f7a (height=475791)
+13:44:52 2017-07-14 [INF] NTFN: New block: height=475791, sha=000000000000000000ae1a40aec00ac52c9879e19ee638a8ec6419eead195f7a
+13:44:52 2017-07-14 [INF] CRTR: Block 000000000000000000ae1a40aec00ac52c9879e19ee638a8ec6419eead195f7a (height=475791) closed 0 channels
+13:45:18 2017-07-14 [DBG] RPCS: [walletbalance] balance=0.002 BTC
+13:46:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:47:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:48:39 2017-07-14 [INF] CRTR: Pruning channel graph using block 0000000000000000015bba374bf05cf8a6699d1a1fc4b552e1eeff3cef8323e5 (height=475792)
+13:48:39 2017-07-14 [INF] NTFN: New block: height=475792, sha=0000000000000000015bba374bf05cf8a6699d1a1fc4b552e1eeff3cef8323e5
+13:48:39 2017-07-14 [INF] CRTR: Block 0000000000000000015bba374bf05cf8a6699d1a1fc4b552e1eeff3cef8323e5 (height=475792) closed 0 channels
+13:51:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:52:11 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
+13:56:17 2017-07-14 [ERR] CMGR: Can't accept connection: chacha20poly1305: message authentication failed
