@@ -686,8 +686,8 @@ func testChannelForceClosure(net *networkHarness, t *harnessTest) {
 	// Alice and Bob. We also push 50k satoshis of the initial amount
 	// towards Bob.
 	numFundingConfs := uint32(1)
-	chanAmt := btcutil.Amount(10e4)
-	pushAmt := btcutil.Amount(5e4)
+	chanAmt := btcutil.Amount(10e5)
+	pushAmt := btcutil.Amount(5e5)
 	chanOpenUpdate, err := net.OpenChannel(ctxb, net.Alice, net.Bob,
 		chanAmt, pushAmt, numFundingConfs)
 	if err != nil {
@@ -2042,9 +2042,10 @@ out:
 	}
 
 	// To do so, we'll push most of the funds in the channel over to
-	// Alice's side, leaving on 10k satoshis of available balance for bob.
+	// Alice's side, leaving on 60k satoshis of available balance for bob.
+	// Amount increased from 10k to 60 due to higher static fee
 	invoiceReq = &lnrpc.Invoice{
-		Value: int64(chanAmt) - 10000,
+		Value: int64(chanAmt) - 60000,
 	}
 	carolInvoice2, err := carol.AddInvoice(ctxb, invoiceReq)
 	if err != nil {

@@ -41,7 +41,7 @@ const (
 	// rotations, etc.
 	identityKeyIndex = hdkeychain.HardenedKeyStart + 2
 
-	commitWeight = btcutil.Amount(724)
+	CommitWeight = btcutil.Amount(724)
 	htlcWeight   = 172
 )
 

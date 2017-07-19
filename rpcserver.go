@@ -379,6 +379,13 @@ func (r *rpcServer) OpenChannel(in *lnrpc.OpenChannelRequest,
 			"size is: %v (6k sat)", minChannelSize)
 	}
 
+	var requiredFee = lnwallet.CommitWeight * btcutil.Amount(r.server.lnwallet.FeeEstimator.EstimateFeePerWeight(1))
+	if remoteInitialBalance + requiredFee > localFundingAmt {
+		return fmt.Errorf("Channel is to small for this push amount and requiredFee "+
+			"channel size: %v, push amount: %v, requiredFee: %v",
+			localFundingAmt, remoteInitialBalance, requiredFee)
+	}
+
 	var (
 		nodePubKey      *btcec.PublicKey
 		nodePubKeyBytes []byte
