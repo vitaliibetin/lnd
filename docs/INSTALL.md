@@ -9,23 +9,23 @@ $ go get -u github.com/Masterminds/glide
 ### Install lnd:
 
 ```
-$ cd $GOPATH
-$ git clone https://github.com/lightningnetwork/lnd $GOPATH/src/github.com/lightningnetwork/lnd
+$ git clone https://github.com/BitfuryLightning/lnd $GOPATH/src/github.com/lightningnetwork/lnd
 $ cd $GOPATH/src/github.com/lightningnetwork/lnd
+$ git checkout experimental
 $ glide install
 $ go install . ./cmd/...
 ```
 
-### Install btcutil: (must be from roasbeef fork, not from btcsuite)
+### Install btcutil:
 
 ```
-$ go get -u github.com/roasbeef/btcutil
+$ go get -u github.com/btcsuite/btcutil
 ```
 
-### Install btcd: (must be from roasbeef fork, not from btcsuite)
+### Install btcd:
 
 ```
-$ cd $GOPATH/src/github.com/roasbeef/btcd
+$ cd $GOPATH/src/github.com/btcsuite/btcd
 $ glide install
 $ go install . ./cmd/...
 ```

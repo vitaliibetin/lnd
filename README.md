@@ -1,19 +1,16 @@
 ## Lightning Network Daemon
 
-[![Build Status](http://img.shields.io/travis/lightningnetwork/lnd.svg)](https://travis-ci.org/lightningnetwork/lnd) 
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/lightningnetwork/lnd/blob/master/LICENSE) 
-[![Irc](https://img.shields.io/badge/chat-on%20freenode-brightgreen.svg)](https://webchat.freenode.net/?channels=lnd) 
-[![Godoc](https://godoc.org/github.com/lightningnetwork/lnd?status.svg)](https://godoc.org/github.com/lightningnetwork/lnd)
-[![Coverage Status](https://coveralls.io/repos/github/lightningnetwork/lnd/badge.svg?branch=master)](https://coveralls.io/github/lightningnetwork/lnd?branch=master)
+This is a small modification of lnd to allow operation on Bitcoin mainnet without segwit. It trades some of
+security for ability to work without SegWit. 
+It should not be used for any "real" money transfers.
 
 The Lightning Network Daemon (`lnd`) - is a complete implementation of a 
 [Lightning Network](https://lightning.network) node and currently 
-deployed on `testnet4` - the Bitcoin Test Network. It utilizes an 
-upcoming upgrade to Bitcoin: Segregated Witness (`segwit`). The 
+deployed on `testnet4` - the Bitcoin Test Network.  The 
 project's codebase uses the [btcsuite](https://github.com/btcsuite/) set
 of Bitcoin libraries, and is currently dependant on [btcd](https://github.com/btcsuite/btcd). 
 In the current state `lnd` is capable of: 
-* creating channels
+* creating channels (can be susceptible to miner attack)
 * closing channels
 * completely managing all channel states (including the exceptional ones!)
 * maintaining a fully authenticated+validated channel graph
@@ -68,17 +65,16 @@ said, `lnd` the current status of `lnd`'s BOLT compliance is:
     ```
     $ go get -u github.com/Masterminds/glide
     ```
-  * **btcd:** This project currently requires `btcd` with segwit support,
-    which is not yet merged into the master branch. Instead,
-    [roasbeef](https://github.com/roasbeef/btcd) maintains a fork with his
-    segwit implementation applied. To install, please see 
+  * **btcd:** This project currently requires `btcd`,
+    (https://github.com/btcsuite/btcd) To install, please see 
     [the installation instructions](docs/INSTALL.md).
 
 With the preliminary steps completed, to install `lnd`, `lncli`, and all
 related dependencies run the following commands:
 ```
-$ git clone https://github.com/lightningnetwork/lnd $GOPATH/src/github.com/lightningnetwork/lnd
+$ git clone https://github.com/BitfuryLightning/lnd $GOPATH/src/github.com/lightningnetwork/lnd
 $ cd $GOPATH/src/github.com/lightningnetwork/lnd
+$ git checkout experimental
 $ glide install
 $ go install . ./cmd/...
 ```
