@@ -519,8 +519,47 @@ func (r *rpcServer) ChannelStateSnapshot(ctx context.Context,
 	previousCloseSummary = closeSummary // TODO(evg): add copy method
 
 	return &lnrpc.ChannelStateSnapshotResponse{
-		Transaction: previousSignedMsgTx.String(),
+		Transaction: msgTxDescription(previousSignedMsgTx),
 	}, nil
+}
+
+func msgTxDescription(msg *wire.MsgTx) string {
+	txInputs := make([]string, len(msg.TxIn))
+	for i, txIn := range msg.TxIn {
+		txInputs[i] = txInDescription(txIn)
+	}
+
+	txOutputs := make([]string, len(msg.TxOut))
+	for i, txOut := range msg.TxOut {
+		txOutputs[i] = txOutDescription(txOut)
+	}
+
+	tmpl := `
+	Version  %v
+	TxIn     %v
+	TxOut    %v
+	LockTime %v
+	`
+	return fmt.Sprintf(tmpl, msg.Version, txInputs, txOutputs, msg.LockTime)
+}
+
+func txInDescription(t *wire.TxIn) string {
+	tmpl := `
+	PreviousOutPoint %v
+	SignatureScript  %v
+	Witness          %v
+	Sequence         %v
+	`
+	return fmt.Sprintf(tmpl, t.PreviousOutPoint.String(), t.SignatureScript,
+		t.Witness, t.Sequence)
+}
+
+func txOutDescription(t *wire.TxOut) string {
+	tmpl := `
+	Value    %v
+	PkScript %v
+	`
+	return fmt.Sprintf(tmpl, t.Value, t.PkScript)
 }
 
 func (r *rpcServer) CloseChannelBreach(ctx context.Context,
