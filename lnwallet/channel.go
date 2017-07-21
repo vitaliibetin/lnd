@@ -789,6 +789,10 @@ func NewLightningChannel(signer Signer, events chainntnfs.ChainNotifier,
 	return lc, nil
 }
 
+func (lc *LightningChannel) CopyMsgTx() *wire.MsgTx {
+	return lc.channelState.OurCommitTx.Copy()
+}
+
 // BreachRetribution contains all the data necessary to bring a channel
 // counterparty to justice claiming ALL lingering funds within the channel in
 // the scenario that they broadcast a revoked commitment transaction. A
@@ -2310,6 +2314,27 @@ type ForceCloseSummary struct {
 	// SelfOutputMaturity is the relative maturity period before the above
 	// output can be claimed.
 	SelfOutputMaturity uint32
+}
+
+func (lc *LightningChannel) GetSignedCommitTx() (*wire.MsgTx, error) {
+	return lc.getSignedCommitTx()
+}
+
+// TODO(evg): delete this methods, move some logic from rpcserver to lnwallet package
+func (lc *LightningChannel) GetChannelState() *channeldb.OpenChannel {
+	return lc.channelState
+}
+
+func (lc *LightningChannel) GetCurrentHeight() uint64 {
+	return lc.currentHeight
+}
+
+func CommitScriptToSelf(csvTimeout uint32, selfKey, revokeKey *btcec.PublicKey) ([]byte, error) {
+	return commitScriptToSelf(csvTimeout, selfKey, revokeKey)
+}
+
+func WitnessScriptHash(witnessScript []byte) ([]byte, error) {
+	return witnessScriptHash(witnessScript)
 }
 
 // getSignedCommitTx function take the latest commitment transaction and populate

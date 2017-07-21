@@ -422,6 +422,88 @@ func openChannel(ctx *cli.Context) error {
 	}
 }
 
+var channelStateSnapshotCommand = cli.Command{
+	Name: "channelstatesnapshot",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "funding_txid",
+			Usage: "the txid of the channel's funding transaction",
+		},
+		cli.IntFlag{
+			Name: "output_index",
+			Usage: "the output index for the funding output of the funding " +
+				"transaction",
+		},
+	},
+	Action: channelStateSnapshot,
+}
+
+func channelStateSnapshot(ctx *cli.Context) error {
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	txidHash, err := chainhash.NewHashFromStr(ctx.String("funding_txid"))
+	if err != nil {
+		return err
+	}
+
+	req := &lnrpc.ChannelStateSnapshotRequest{
+		ChannelPoint: &lnrpc.ChannelPoint{
+			FundingTxid: txidHash[:],
+			OutputIndex: uint32(ctx.Int("output_index")),
+		},
+	}
+
+	resp, err := client.ChannelStateSnapshot(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(resp.Transaction)
+	return nil
+}
+
+var closeChannelBreachCommand = cli.Command{
+	Name: "closechannelbreach",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "funding_txid",
+			Usage: "the txid of the channel's funding transaction",
+		},
+		cli.IntFlag{
+			Name: "output_index",
+			Usage: "the output index for the funding output of the funding " +
+				"transaction",
+		},
+	},
+	Action: closeChannelBreach,
+}
+
+func closeChannelBreach(ctx *cli.Context) error {
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	txidHash, err := chainhash.NewHashFromStr(ctx.String("funding_txid"))
+	if err != nil {
+		return err
+	}
+
+	req := &lnrpc.CloseChannelBreachRequest{
+		ChannelPoint: &lnrpc.ChannelPoint{
+			FundingTxid: txidHash[:],
+			OutputIndex: uint32(ctx.Int("output_index")),
+		},
+	}
+
+	resp, err := client.CloseChannelBreach(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
+	return nil
+}
+
 // TODO(roasbeef): also allow short relative channel ID.
 
 var closeChannelCommand = cli.Command{

@@ -58,6 +58,8 @@ func main() {
 		sendCoinsCommand,
 		connectCommand,
 		openChannelCommand,
+		channelStateSnapshotCommand,
+		closeChannelBreachCommand,
 		closeChannelCommand,
 		listPeersCommand,
 		walletBalanceCommand,

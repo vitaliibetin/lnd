@@ -16,6 +16,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"bytes"
 	"github.com/boltdb/bolt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -35,7 +36,9 @@ import (
 )
 
 var (
-	defaultAccount uint32 = waddrmgr.DefaultAccountNum
+	defaultAccount       uint32 = waddrmgr.DefaultAccountNum
+	previousSignedMsgTx  *wire.MsgTx
+	previousCloseSummary *lnwallet.ForceCloseSummary
 )
 
 // rpcServer is a gRPC, RPC front end to the lnd daemon.
@@ -419,6 +422,134 @@ func (r *rpcServer) OpenChannelSync(ctx context.Context,
 	case <-r.quit:
 		return nil, nil
 	}
+}
+
+func (r *rpcServer) ChannelStateSnapshot(ctx context.Context,
+	in *lnrpc.ChannelStateSnapshotRequest) (*lnrpc.ChannelStateSnapshotResponse, error) {
+	rpcsLog.Debug("[channelstatesnapshot]")
+
+	fundingOutputIndex := in.ChannelPoint.OutputIndex
+	fundingTxid, err := chainhash.NewHash(in.ChannelPoint.FundingTxid)
+	if err != nil {
+		rpcsLog.Errorf("[closechannel] invalid txid: %v", err)
+		return nil, err
+	}
+	fundingOutPoint := wire.NewOutPoint(fundingTxid, fundingOutputIndex)
+
+	channel, err := r.fetchActiveChannel(*fundingOutPoint)
+	if err != nil {
+		return nil, err
+	}
+
+	msgTx, err := channel.GetSignedCommitTx()
+	if err != nil {
+		return nil, err
+	}
+	previousSignedMsgTx = msgTx.Copy()
+
+	// Re-derive the original pkScript for to-self output within the
+	// commitment transaction. We'll need this to find the corresponding
+	// output in the commitment transaction and potentially for creating
+	// the sign descriptor.
+	channelState := channel.GetChannelState()
+
+	csvTimeout := channelState.LocalCsvDelay
+	selfKey := channelState.OurCommitKey
+	producer := channelState.RevocationProducer
+	unusedRevocation, err := producer.AtIndex(channel.GetCurrentHeight())
+	if err != nil {
+		return nil, err
+	}
+	revokeKey := lnwallet.DeriveRevocationPubkey(channelState.TheirCommitKey,
+		unusedRevocation[:])
+	selfScript, err := lnwallet.CommitScriptToSelf(csvTimeout, selfKey, revokeKey)
+	if err != nil {
+		return nil, err
+	}
+	payToUsScriptHash, err := lnwallet.WitnessScriptHash(selfScript)
+	if err != nil {
+		return nil, err
+	}
+
+	// Locate the output index of the delayed commitment output back to us.
+	// We'll return the details of this output to the caller so they can
+	// sweep it once it's mature.
+	// TODO(roasbeef): also return HTLC info, assumes only p2wsh is commit
+	// tx
+	var delayIndex uint32
+	var delayScript []byte
+	var selfSignDesc *lnwallet.SignDescriptor
+	for i, txOut := range previousSignedMsgTx.TxOut {
+		if !bytes.Equal(payToUsScriptHash, txOut.PkScript) {
+			continue
+		}
+
+		delayIndex = uint32(i)
+		delayScript = txOut.PkScript
+		break
+	}
+
+	// With the necessary information gathered above, create a new sign
+	// descriptor which is capable of generating the signature the caller
+	// needs to sweep this output. The hash cache, and input index are not
+	// set as the caller will decide these values once sweeping the output.
+	// If the output is non-existant (dust), have the sign descriptor be nil.
+	if len(delayScript) != 0 {
+		selfSignDesc = &lnwallet.SignDescriptor{
+			PubKey:        selfKey,
+			WitnessScript: selfScript,
+			Output: &wire.TxOut{
+				PkScript: delayScript,
+				Value:    int64(channelState.OurBalance),
+			},
+			HashType: txscript.SigHashAll,
+		}
+	}
+
+	closeSummary := &lnwallet.ForceCloseSummary{
+		ChanPoint: *fundingOutPoint,
+		CloseTx:   previousSignedMsgTx,
+		SelfOutpoint: wire.OutPoint{
+			Hash:  previousSignedMsgTx.TxHash(),
+			Index: delayIndex,
+		},
+		SelfOutputMaturity: csvTimeout,
+		SelfOutputSignDesc: selfSignDesc,
+	}
+	previousCloseSummary = closeSummary // TODO(evg): add copy method
+
+	return &lnrpc.ChannelStateSnapshotResponse{
+		Transaction: previousSignedMsgTx.String(),
+	}, nil
+}
+
+func (r *rpcServer) CloseChannelBreach(ctx context.Context,
+	in *lnrpc.CloseChannelBreachRequest) (*lnrpc.CloseChannelBreachResponse, error) {
+	rpcsLog.Debug("[closechannelbreach]")
+	/*
+		fundingOutputIndex := in.ChannelPoint.OutputIndex
+		fundingTxid, err := chainhash.NewHash(in.ChannelPoint.FundingTxid)
+		if err != nil {
+			rpcsLog.Errorf("[closechannel] invalid txid: %v", err)
+			return err
+		}
+		fundingOutPoint := wire.NewOutPoint(fundingTxid, fundingOutputIndex)
+
+		channel, err := r.fetchActiveChannel(fundingOutPoint)
+		if _, err := r.forceCloseChan(channel); err != nil {
+			rpcsLog.Errorf("unable to force close transaction: %v", err)
+			return err
+		}
+	*/
+	if err := r.server.lnwallet.PublishTransaction(previousSignedMsgTx); err != nil {
+		return nil, err
+	}
+
+	// Send the closed channel summary over to the utxoNursery in order to
+	// have its outputs swept back into the wallet once they're mature.
+	r.server.utxoNursery.IncubateOutputs(previousCloseSummary)
+
+	return &lnrpc.CloseChannelBreachResponse{}, nil
 }
 
 // CloseChannel attempts to close an active channel identified by its channel

@@ -877,6 +877,33 @@
         }
       }
     },
+    "lnrpcChannelStateSnapshotRequest": {
+      "type": "object",
+      "properties": {
+        "channel_point": {
+          "$ref": "#/definitions/lnrpcChannelPoint"
+        }
+      }
+    },
+    "lnrpcChannelStateSnapshotResponse": {
+      "type": "object",
+      "properties": {
+        "transaction": {
+          "type": "string"
+        }
+      }
+    },
+    "lnrpcCloseChannelBreachRequest": {
+      "type": "object",
+      "properties": {
+        "channel_point": {
+          "$ref": "#/definitions/lnrpcChannelPoint"
+        }
+      }
+    },
+    "lnrpcCloseChannelBreachResponse": {
+      "type": "object"
+    },
     "lnrpcCloseChannelRequest": {
       "type": "object",
       "properties": {
